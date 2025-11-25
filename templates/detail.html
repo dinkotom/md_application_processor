@@ -15,6 +15,8 @@
             <button type="submit" class="btn btn-primary">Exportovat do Ecomail</button>
         </form>
         {% endif %}
+        <a href="{{ url_for('applicant_card', id=applicant.id) }}" class="btn btn-primary"
+            style="background-color: #36378c; border-color: #36378c;">Stáhnout průkaz</a>
         <button type="button" onclick="openDeleteModal()" class="btn btn-danger">Smazat</button>
         <button type="button" onclick="openEditModal()" class="btn btn-secondary">Upravit</button>
         <a href="{{ url_for('index') }}" class="btn btn-secondary">← Zpět na seznam</a>

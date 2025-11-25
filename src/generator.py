@@ -1,4 +1,5 @@
 import qrcode
+from PIL import Image, ImageDraw, ImageFont
 from docx import Document
 from docx.shared import Inches
 from typing import Dict
@@ -151,6 +152,70 @@ def generate_document(data: Dict[str, str], qr_code_path: str, output_path: str,
     
     doc.save(output_path)
     print(f"Document saved to {output_path}")
+
+def generate_membership_card(data: Dict[str, str]):
+    """
+    Generates a membership card image using the template.
+    Returns bytes of the PNG image.
+    """
+    from io import BytesIO
+    import os
+    
+    # Load the template
+    template_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'static', 'card_template.jpg')
+    card = Image.open(template_path)
+    
+    # Get card dimensions
+    width, height = card.size
+    
+    # Create a drawing context
+    draw = ImageDraw.Draw(card)
+    
+    # 1. Generate QR Code
+    qr_img = generate_qr_code_bytes(data)
+    qr_pil = Image.open(qr_img)
+    
+    # Resize QR code - smaller to fit in top left corner
+    qr_size = int(height * 0.55)  # 55% of card height
+    qr_pil = qr_pil.resize((qr_size, qr_size))
+    
+    # Position QR code in TOP LEFT corner (not covering faces)
+    qr_x = 50
+    qr_y = 22  # Top position
+    card.paste(qr_pil, (qr_x, qr_y))
+    
+    # 2. Load fonts
+    try:
+        font_number = ImageFont.truetype("/System/Library/Fonts/Helvetica.ttc", 70)
+        font_name = ImageFont.truetype("/System/Library/Fonts/Helvetica.ttc", 45)
+    except:
+        try:
+            font_number = ImageFont.truetype("Arial.ttf", 70)
+            font_name = ImageFont.truetype("Arial.ttf", 45)
+        except:
+            font_number = ImageFont.load_default()
+            font_name = ImageFont.load_default()
+    
+    # 3. Draw membership number (to the right of QR code, top aligned)
+    membership_id = data.get('membership_id', '0000')
+    # Position to the right of QR code
+    number_x = qr_x + qr_size + 30  # 30px gap from QR code
+    number_y = qr_y + 20  # Aligned with top of QR
+    
+    draw.text((number_x, number_y), membership_id, font=font_number, fill="white")
+    
+    # 4. Draw full name (below membership number, same x position)
+    full_name = f"{data.get('first_name', '')} {data.get('last_name', '')}"
+    name_x = number_x
+    name_y = number_y + 90  # Below the number
+    
+    draw.text((name_x, name_y), full_name, font=font_name, fill="white")
+    
+    # Save to bytes
+    img_io = BytesIO()
+    card.save(img_io, 'PNG')
+    img_io.seek(0)
+    return img_io
 
 if __name__ == "__main__":
     # Test run

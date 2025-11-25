@@ -376,6 +376,46 @@ def applicant_detail(id):
     
     return render_template('detail.html', applicant=app_dict, qr_filename=qr_filename)
 
+@app.route('/applicant/<int:id>/card')
+def applicant_card(id):
+    """Generate and serve membership card image"""
+    from flask import send_file
+    from src.generator import generate_membership_card
+    import tempfile
+    import os
+    
+    conn = get_db_connection()
+    applicant = conn.execute('SELECT * FROM applicants WHERE id = ? AND deleted = 0', (id,)).fetchone()
+    conn.close()
+    
+    if applicant is None:
+        return "Applicant not found", 404
+    
+    app_dict = dict(applicant)
+    
+    # Generate card bytes
+    img_io = generate_membership_card(app_dict)
+    
+    # Filename
+    mid = app_dict.get('membership_id', '0000')
+    safe_last = "".join([c for c in app_dict.get('last_name', '') if c.isalpha() or c.isdigit()]).rstrip()
+    filename = f"prukaz_{mid}_{safe_last}.png"
+    
+    # Save to temporary file
+    temp_dir = tempfile.gettempdir()
+    temp_path = os.path.join(temp_dir, filename)
+    
+    with open(temp_path, 'wb') as f:
+        f.write(img_io.getvalue())
+    
+    # Send the file from disk
+    return send_file(
+        temp_path,
+        mimetype='image/png',
+        as_attachment=True,
+        download_name=filename
+    )
+
 @app.route('/qr_code/<int:id>')
 def serve_qr_code(id):
     """Generate and serve QR code on demand"""
