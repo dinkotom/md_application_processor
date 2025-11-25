@@ -210,7 +210,8 @@ def index():
             app.get('first_name', ''), 
             app.get('last_name', ''), 
             app.get('email', ''), 
-            db_path=get_db_path()
+            db_path=get_db_path(),
+            exclude_id=app.get('id')
         )
         final_applicants.append(app)
     
@@ -364,7 +365,8 @@ def applicant_detail(id):
         app_dict.get('first_name', ''), 
         app_dict.get('last_name', ''), 
         app_dict.get('email', ''), 
-        db_path=get_db_path()
+        db_path=get_db_path(),
+        exclude_id=app_dict.get('id')
     )
     
     # Determine QR code path

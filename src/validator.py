@@ -53,7 +53,7 @@ def is_duplicate(membership_id: str, db_path: str = DB_PATH) -> bool:
     conn.close()
     return result is not None
 
-def is_suspect_duplicate(first_name: str, last_name: str, email: str, db_path: str = DB_PATH) -> bool:
+def is_suspect_duplicate(first_name: str, last_name: str, email: str, db_path: str = DB_PATH, exclude_id: int = None) -> bool:
     """Checks if a potential duplicate applicant exists based on first name, last name, and email."""
     if not (first_name and last_name and email):
         return False # Not enough info to check for suspect duplicate
@@ -62,10 +62,17 @@ def is_suspect_duplicate(first_name: str, last_name: str, email: str, db_path: s
     cursor = conn.cursor()
 
     # Check for existing records with the same first name, last name, and email
-    cursor.execute('''
+    query = '''
         SELECT id FROM applicants
         WHERE first_name = ? AND last_name = ? AND email = ?
-    ''', (first_name.strip(), last_name.strip(), email.strip()))
+    '''
+    params = [first_name.strip(), last_name.strip(), email.strip()]
+    
+    if exclude_id is not None:
+        query += ' AND id != ?'
+        params.append(exclude_id)
+        
+    cursor.execute(query, tuple(params))
 
     result = cursor.fetchone()
     conn.close()
