@@ -1,0 +1,485 @@
+{% extends "base.html" %}
+
+{% block title %}Přihlášky - Mladý divák{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div style="display: flex; justify-content: space-between; align-items: center; width: 100%;">
+        <h2>Přihlášky uchazečů</h2>
+
+        <!-- Mode Switcher -->
+        <div class="mode-switcher"
+            style="display: flex; align-items: center; gap: 10px; background: #f5f5f5; padding: 5px 10px; border-radius: 8px;">
+            <span style="font-weight: bold; font-size: 0.9em;">Režim:</span>
+            {% if current_mode == 'production' %}
+            <span class="badge" style="background-color: #dc3545; color: white;">PRODUKCE</span>
+            <a href="{{ url_for('switch_mode', mode='test') }}" class="btn btn-sm btn-outline-secondary"
+                style="font-size: 0.8em;">Přepnout na TEST</a>
+            {% else %}
+            <span class="badge" style="background-color: #ffc107; color: black;">TEST</span>
+            <a href="{{ url_for('switch_mode', mode='production') }}" class="btn btn-sm btn-outline-secondary"
+                style="font-size: 0.8em;">Přepnout na PRODUKCI</a>
+            {% endif %}
+        </div>
+    </div>
+
+    <div style="display: flex; gap: 1rem; align-items: center; margin-top: 1rem;">
+        <p class="subtitle" style="margin: 0;">Celkem: <strong>{{ total }}</strong> záznamů</p>
+        <button type="button" class="btn btn-primary" onclick="handleEmailFetch(this)">
+            <span style="margin-right: 0.5rem;">⬇️</span> Stáhnout nové přihlášky
+        </button>
+        <form id="csvUploadForm" enctype="multipart/form-data" style="display: inline;">
+            <input type="file" id="csvFileInput" name="csv_file" accept=".csv" style="display: none;"
+                onchange="handleCSVUpload(event)">
+            <button type="button" class="btn btn-secondary" onclick="document.getElementById('csvFileInput').click()">
+                <span style="margin-right: 0.5rem;">📄</span> Importovat z CSV
+            </button>
+        </form>
+
+        {% if current_mode != 'production' %}
+        <button type="button" class="btn" style="background-color: #dc3545; color: white;" onclick="openClearDbModal()">
+            <span style="margin-right: 0.5rem;">🗑️</span> Smazat DB
+        </button>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Clear DB Confirmation Modal -->
+<div id="clearDbModal" class="modal-overlay">
+    <div class="modal">
+        <span class="close" onclick="closeClearDbModal()">&times;</span>
+        <div class="modal-title">⚠️ Smazat databázi?</div>
+        <div class="modal-body">
+            <p>Opravdu chcete smazat <strong>celou testovací databázi</strong>?</p>
+            <p style="color: #dc3545;">Tato akce je nevratná a smaže všechny přihlášky v testovacím režimu.</p>
+        </div>
+        <div class="modal-actions">
+            <button class="btn btn-secondary" onclick="closeClearDbModal()">Zrušit</button>
+            <form id="clearDbForm" action="{{ url_for('clear_database') }}" method="POST" style="display: inline;">
+                <button type="button" class="btn" style="background-color: #dc3545; color: white;"
+                    onclick="submitClearDb()">Ano, smazat vše</button>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+    function openClearDbModal() {
+        const modal = document.getElementById('clearDbModal');
+        modal.style.display = 'flex';
+        // Trigger reflow
+        modal.offsetHeight;
+        modal.classList.add('active');
+    }
+
+    function closeClearDbModal() {
+        const modal = document.getElementById('clearDbModal');
+        modal.classList.remove('active');
+        setTimeout(() => {
+            modal.style.display = 'none';
+        }, 300);
+    }
+
+    function submitClearDb() {
+        // Close modal immediately
+        closeClearDbModal();
+        // Submit form
+        document.getElementById('clearDbForm').submit();
+    }
+
+    // Close modal when clicking outside
+    window.onclick = function (event) {
+        var modal = document.getElementById('clearDbModal');
+        if (event.target == modal) {
+            modal.style.display = "none";
+        }
+        // Also handle import modal
+        var importModal = document.getElementById('importModal');
+        if (event.target == importModal) {
+            importModal.style.display = "none";
+        }
+    }
+</script>
+
+<div class="filters-container">
+    <form action="{{ url_for('index') }}" method="GET" class="search-form">
+        <input type="text" name="search" class="search-input" placeholder="Hledat jméno, email, město..."
+            value="{{ search }}">
+        <button type="submit" class="btn btn-primary">Hledat</button>
+    </form>
+
+    <!-- Status Filter Buttons -->
+    <div class="status-filter-buttons">
+        <a href="{{ url_for('index', search=search, age_group=filter_age_group, city=filter_city, school=filter_school, interest=filter_interest, source=filter_source) }}"
+            class="status-filter-btn {% if not filter_status %}active{% endif %}">
+            Vše
+        </a>
+        <a href="{{ url_for('index', status='Nová', search=search, age_group=filter_age_group, city=filter_city, school=filter_school, interest=filter_interest, source=filter_source) }}"
+            class="status-filter-btn status-nova {% if filter_status == 'Nová' %}active{% endif %}">
+            Nová
+        </a>
+        <a href="{{ url_for('index', status='Zpracovává se', search=search, age_group=filter_age_group, city=filter_city, school=filter_school, interest=filter_interest, source=filter_source) }}"
+            class="status-filter-btn status-zpracovava-se {% if filter_status == 'Zpracovává se' %}active{% endif %}">
+            Zpracovává se
+        </a>
+        <a href="{{ url_for('index', status='Vyřízená', search=search, age_group=filter_age_group, city=filter_city, school=filter_school, interest=filter_interest, source=filter_source) }}"
+            class="status-filter-btn status-vyrizena {% if filter_status == 'Vyřízená' %}active{% endif %}">
+            Vyřízená
+        </a>
+    </div>
+
+    {% if filter_age_group or filter_city or filter_school or filter_interest or filter_source %}
+    <div class="active-filters">
+        <span class="filter-label">Aktivní filtry:</span>
+        {% if filter_age_group %}
+        <span class="filter-tag">Věk: {{ filter_age_group }} <a
+                href="{{ url_for('index', search=search, status=filter_status, city=filter_city, school=filter_school, interest=filter_interest, source=filter_source) }}"
+                class="remove-filter">&times;</a></span>
+        {% endif %}
+        {% if filter_city %}
+        <span class="filter-tag">Město: {{ filter_city }} <a
+                href="{{ url_for('index', search=search, status=filter_status, age_group=filter_age_group, school=filter_school, interest=filter_interest, source=filter_source) }}"
+                class="remove-filter">&times;</a></span>
+        {% endif %}
+        {% if filter_school %}
+        <span class="filter-tag">Škola: {{ filter_school }} <a
+                href="{{ url_for('index', search=search, status=filter_status, age_group=filter_age_group, city=filter_city, interest=filter_interest, source=filter_source) }}"
+                class="remove-filter">&times;</a></span>
+        {% endif %}
+        {% if filter_interest %}
+        <span class="filter-tag">Zájem: {{ filter_interest }} <a
+                href="{{ url_for('index', search=search, status=filter_status, age_group=filter_age_group, city=filter_city, school=filter_school, source=filter_source) }}"
+                class="remove-filter">&times;</a></span>
+        {% endif %}
+        {% if filter_source %}
+        <span class="filter-tag">Zdroj: {{ filter_source }} <a
+                href="{{ url_for('index', search=search, status=filter_status, age_group=filter_age_group, city=filter_city, school=filter_school, interest=filter_interest) }}"
+                class="remove-filter">&times;</a></span>
+        {% endif %}
+        <a href="{{ url_for('index') }}" class="clear-all-filters">Zrušit vše</a>
+    </div>
+    {% endif %}
+</div>
+
+<div class="table-container">
+    <table class="applicants-table">
+        <thead>
+            <tr>
+                <th>ID</th>
+                <th>Jméno</th>
+                <th>Email</th>
+                <th>Telefon</th>
+                <th>Věk</th>
+                <th>Město</th>
+                <th>Stav</th>
+                <th>Akce</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for app in applicants %}
+            <tr class="{% if app.age and (app.age < 15 or app.age >= 25) %}warning-row{% endif %}">
+                <td><span class="badge">{{ app.membership_id }}</span></td>
+                <td><strong>{{ app.first_name }} {{ app.last_name }}</strong></td>
+                <td><a href="mailto:{{ app.email }}">{{ app.email }}</a></td>
+                <td>{{ app.phone }}</td>
+                <td>
+                    {% if app.age is not none %}
+                    {{ app.age }} let
+                    {% else %}
+                    <span class="text-muted">N/A</span>
+                    {% endif %}
+                </td>
+                <td>{{ app.city or '-' }}</td>
+                <td>
+                    <form action="{{ url_for('update_applicant_status', id=app.id) }}" method="POST" style="margin: 0;">
+                        <select name="status" onchange="this.form.submit()"
+                            class="status-select status-{{ app.status | slugify_status }}"
+                            style="border: none; padding: 5px 10px; border-radius: 12px; font-size: 0.85em; font-weight: 500; cursor: pointer; appearance: none; -webkit-appearance: none; text-align: center;">
+                            <option value="Nová" {% if app.status=='Nová' %}selected{% endif %}>Nová</option>
+                            <option value="Zpracovává se" {% if app.status=='Zpracovává se' %}selected{% endif %}>
+                                Zpracovává se</option>
+                            <option value="Vyřízená" {% if app.status=='Vyřízená' %}selected{% endif %}>Vyřízená
+                            </option>
+                        </select>
+                    </form>
+                </td>
+                <td>
+                    <a href="{{ url_for('applicant_detail', id=app.id) }}" class="btn btn-primary btn-small">Detail</a>
+                </td>
+            </tr>
+            {% else %}
+            <tr>
+                <td colspan="10" class="text-center">Žádné záznamy nenalezeny</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+
+<!-- Pagination -->
+{% if total_pages > 1 %}
+<div class="pagination">
+    {% if page > 1 %}
+    <a href="{{ url_for('index', page=page-1, search=search, status=filter_status, age_group=filter_age_group, city=filter_city, school=filter_school, interest=filter_interest, source=filter_source) }}"
+        class="btn btn-secondary">
+        &laquo; Předchozí
+    </a>
+    {% else %}
+    <span class="btn btn-secondary disabled">&laquo; Předchozí</span>
+    {% endif %}
+
+    <span class="pagination-info">
+        Stránka {{ page }} z {{ total_pages }}
+    </span>
+
+    {% if page < total_pages %} <a
+        href="{{ url_for('index', page=page+1, search=search, status=filter_status, age_group=filter_age_group, city=filter_city, school=filter_school, interest=filter_interest, source=filter_source) }}"
+        class="btn btn-secondary">
+        Další &raquo;
+        </a>
+        {% else %}
+        <span class="btn btn-secondary disabled">Další &raquo;</span>
+        {% endif %}
+</div>
+{% endif %}
+
+<!-- Edit Modal -->
+<div id="editModal" class="modal-overlay">
+    <div class="modal">
+        <div class="modal-title">Upravit uchazeče</div>
+        <form id="editForm" method="POST">
+            <div class="form-group">
+                <label for="edit_first_name">Jméno</label>
+                <input type="text" id="edit_first_name" name="first_name" required class="form-control">
+            </div>
+            <div class="form-group">
+                <label for="edit_last_name">Příjmení</label>
+                <input type="text" id="edit_last_name" name="last_name" required class="form-control">
+            </div>
+            <div class="form-group">
+                <label for="edit_email">Email</label>
+                <input type="email" id="edit_email" name="email" required class="form-control">
+            </div>
+            <div class="form-group">
+                <label for="edit_phone">Telefon</label>
+                <input type="text" id="edit_phone" name="phone" class="form-control">
+            </div>
+            <div class="form-group">
+                <label for="edit_dob">Datum narození</label>
+                <input type="text" id="edit_dob" name="dob" placeholder="DD.MM.YYYY" class="form-control">
+            </div>
+
+            <hr style="margin: 1.5rem 0; border: 0; border-top: 1px solid var(--border-color);">
+
+            <div class="form-group">
+                <label for="edit_status">Stav přihlášky</label>
+                <select id="edit_status" class="form-control" onchange="updateStatus(this.value)">
+                    <option value="Nová">Nová</option>
+                    <option value="Zpracovává se">Zpracovává se</option>
+                    <option value="Vyřízená">Vyřízená</option>
+                </select>
+                <input type="hidden" id="status_input" name="status">
+            </div>
+
+            <div class="modal-actions" style="margin-top: 1.5rem;">
+                <button type="button" onclick="closeEditModal()" class="btn btn-secondary">Zrušit</button>
+                <button type="submit" class="btn btn-primary">Uložit změny</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Import Confirmation Modal -->
+<div id="importModal" class="modal-overlay">
+    <div class="modal">
+        <div class="modal-title">Potvrzení importu</div>
+        <div class="modal-body">
+            <p><span id="importSource">Import</span> obsahuje <strong id="importTotal">0</strong> záznamů.</p>
+            <p>Bude importováno: <strong id="importNew" style="color: var(--success-color);">0</strong> nových uchazečů
+            </p>
+            <p>Bude přeskočeno: <strong id="importDuplicates" style="color: var(--warning-color);">0</strong> duplicit
+            </p>
+            <br>
+            <p>Chcete pokračovat?</p>
+        </div>
+        <div class="modal-actions">
+            <button type="button" onclick="closeImportModal()" class="btn btn-secondary">Zrušit</button>
+            <button type="button" onclick="confirmImport()" class="btn btn-primary">Pokračovat</button>
+        </div>
+    </div>
+</div>
+
+<script>
+    let currentApplicantId = null;
+
+    function openEditModal(event, id, firstName, lastName, email, phone, dob, status) {
+        event.stopPropagation(); // Prevent row click
+        currentApplicantId = id;
+
+        const modal = document.getElementById('editModal');
+        const form = document.getElementById('editForm');
+
+        // Set form action
+        form.action = `/applicant/${id}/update`;
+
+        // Populate fields
+        document.getElementById('edit_first_name').value = firstName;
+        document.getElementById('edit_last_name').value = lastName;
+        document.getElementById('edit_email').value = email;
+        document.getElementById('edit_phone').value = phone;
+        document.getElementById('edit_dob').value = dob;
+
+        // Set status
+        const statusSelect = document.getElementById('edit_status');
+        statusSelect.value = status;
+        document.getElementById('status_input').value = status; // Sync hidden input
+
+        modal.style.display = 'flex';
+        // Trigger reflow
+        modal.offsetHeight;
+        modal.classList.add('active');
+    }
+
+    function updateStatus(newStatus) {
+        document.getElementById('status_input').value = newStatus;
+    }
+
+    function closeEditModal() {
+        const modal = document.getElementById('editModal');
+        modal.classList.remove('active');
+        setTimeout(() => {
+            modal.style.display = 'none';
+        }, 300);
+    }
+
+    // Close on click outside
+    document.getElementById('editModal').addEventListener('click', function (e) {
+        if (e.target === this) {
+            closeEditModal();
+        }
+    });
+
+    // Close on Escape key
+    document.addEventListener('keydown', function (e) {
+        if (e.key === 'Escape') {
+            closeEditModal();
+        }
+    });
+
+    // Track current import type ('csv' or 'email')
+    let currentImportType = null;
+
+    // Email Import handling
+    async function handleEmailFetch(btn) {
+        // Save original state
+        const originalText = btn.innerHTML;
+
+        // Set loading state
+        btn.disabled = true;
+        btn.innerHTML = '<span style="margin-right: 0.5rem;">⏳</span> Stahování...';
+
+        try {
+            const response = await fetch('{{ url_for("fetch_preview") }}', {
+                method: 'POST'
+            });
+
+            if (!response.ok) {
+                const error = await response.json();
+                alert('Chyba při stahování emailů: ' + (error.error || 'Neznámá chyba'));
+                return;
+            }
+
+            const stats = await response.json();
+
+            // Set import type
+            currentImportType = 'email';
+
+            // Show confirmation modal
+            document.getElementById('importSource').textContent = 'Emailová schránka';
+            document.getElementById('importTotal').textContent = stats.total;
+            document.getElementById('importNew').textContent = stats.new;
+            document.getElementById('importDuplicates').textContent = stats.duplicates;
+
+            const modal = document.getElementById('importModal');
+            modal.style.display = 'flex';
+            modal.offsetHeight;
+            modal.classList.add('active');
+        } catch (error) {
+            console.error('Error fetching emails:', error);
+            alert('Chyba při stahování emailů.');
+        } finally {
+            // Restore original state
+            btn.disabled = false;
+            btn.innerHTML = originalText;
+        }
+    }
+
+    // CSV Import handling
+    async function handleCSVUpload(event) {
+        const file = event.target.files[0];
+        if (!file) return;
+
+        const formData = new FormData();
+        formData.append('csv_file', file);
+
+        try {
+            const response = await fetch('{{ url_for("import_preview") }}', {
+                method: 'POST',
+                body: formData
+            });
+
+            const stats = await response.json();
+
+            // Set import type
+            currentImportType = 'csv';
+
+            // Show confirmation modal
+            document.getElementById('importSource').textContent = 'CSV soubor';
+            document.getElementById('importTotal').textContent = stats.total;
+            document.getElementById('importNew').textContent = stats.new;
+            document.getElementById('importDuplicates').textContent = stats.duplicates;
+
+            const modal = document.getElementById('importModal');
+            modal.style.display = 'flex';
+            modal.offsetHeight;
+            modal.classList.add('active');
+        } catch (error) {
+            console.error('Error uploading CSV:', error);
+            alert('Chyba při nahrávání CSV souboru.');
+        }
+
+        // Reset file input
+        event.target.value = '';
+    }
+
+    function closeImportModal() {
+        const modal = document.getElementById('importModal');
+        modal.classList.remove('active');
+        setTimeout(() => {
+            modal.style.display = 'none';
+        }, 300);
+    }
+
+    function confirmImport() {
+        // Determine which endpoint to call based on import type
+        const endpoint = currentImportType === 'email'
+            ? '{{ url_for("fetch_confirm") }}'
+            : '{{ url_for("import_confirm") }}';
+
+        // Submit to confirm endpoint
+        fetch(endpoint, {
+            method: 'POST'
+        }).then(() => {
+            window.location.reload();
+        });
+    }
+
+    // Close import modal on click outside
+    document.getElementById('importModal').addEventListener('click', function (e) {
+        if (e.target === this) {
+            closeImportModal();
+        }
+    });
+
+</script>
+{% endblock %}

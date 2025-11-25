@@ -1,0 +1,4 @@
+first_name,last_name,email,phone,dob,membership_id,city,school,interests,character,frequency,source,source_detail,message,color,newsletter
+Vendula,Sýkorová,vendula.sykorova@email.cz,123456789,15/05/2005,1001,Praha,Gymnázium,Divadlo,Extrovert,Týdně,Kamarád,,Test message,Modrá,Ano
+Jan,Novák,jan.novak@email.cz,987654321,20/03/2006,1002,Brno,Střední škola,Film,Introvert,Měsíčně,Internet,,Another message,Červená,Ne
+Petra,Svobodová,petra.svobodova@email.cz,555123456,10/08/2007,1003,Ostrava,Gymnázium,Hudba,Extrovert,Týdně,Škola,,Test,Zelená,Ano

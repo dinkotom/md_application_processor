@@ -1,0 +1,76 @@
+{% extends "base.html" %}
+
+{% block title %}Statistiky - Mladý divák{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h2>Statistiky přihlášek</h2>
+    <p class="subtitle">Celkem: <strong>{{ total }}</strong> uchazečů</p>
+</div>
+
+<div class="stats-grid">
+    <div class="stat-card">
+        <h3>Věkové kategorie</h3>
+        <div class="stat-item">
+            <span class="stat-label">Pod 15 let:</span>
+            <span class="stat-value warning"><a href="{{ url_for('index', age_group='under_15') }}">{{ age_under_15
+                    }}</a></span>
+        </div>
+        <div class="stat-item">
+            <span class="stat-label">15-18 let:</span>
+            <span class="stat-value success"><a href="{{ url_for('index', age_group='15_18') }}">{{ age_15_18
+                    }}</a></span>
+        </div>
+        <div class="stat-item">
+            <span class="stat-label">19-24 let:</span>
+            <span class="stat-value success"><a href="{{ url_for('index', age_group='19_24') }}">{{ age_19_24
+                    }}</a></span>
+        </div>
+        <div class="stat-item">
+            <span class="stat-label">Nad 24 let:</span>
+            <span class="stat-value warning"><a href="{{ url_for('index', age_group='over_24') }}">{{ age_over_24
+                    }}</a></span>
+        </div>
+    </div>
+
+    <div class="stat-card">
+        <h3>Top 10 měst</h3>
+        {% for city, count in cities %}
+        <div class="stat-item">
+            <span class="stat-label">{{ city }}:</span>
+            <span class="stat-value"><a href="{{ url_for('index', city=city) }}">{{ count }}</a></span>
+        </div>
+        {% endfor %}
+    </div>
+
+    <div class="stat-card">
+        <h3>Top 10 škol</h3>
+        {% for school, count in schools %}
+        <div class="stat-item">
+            <span class="stat-label">{{ school[:50] }}{% if school|length > 50 %}...{% endif %}:</span>
+            <span class="stat-value"><a href="{{ url_for('index', school=school) }}">{{ count }}</a></span>
+        </div>
+        {% endfor %}
+    </div>
+
+    <div class="stat-card">
+        <h3>Top 10 zájmů</h3>
+        {% for interest, count in interests %}
+        <div class="stat-item">
+            <span class="stat-label">{{ interest }}:</span>
+            <span class="stat-value"><a href="{{ url_for('index', interest=interest) }}">{{ count }}</a></span>
+        </div>
+        {% endfor %}
+    </div>
+
+    <div class="stat-card">
+        <h3>Zdroje informací</h3>
+        {% for source, count in sources %}
+        <div class="stat-item">
+            <span class="stat-label">{{ source }}:</span>
+            <span class="stat-value"><a href="{{ url_for('index', source=source) }}">{{ count }}</a></span>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+{% endblock %}
