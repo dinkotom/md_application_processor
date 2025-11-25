@@ -203,7 +203,15 @@ def index():
     for app in applicants_subset:
         # app is a dict - always calculate age for display
         app['age'] = calculate_age(app['dob']) if app.get('dob') else None
-        app['suspect_duplicate'] = is_suspect_duplicate(app, db_path=get_db_path())
+        
+        # Check for suspect duplicate
+        from src.validator import is_suspect_duplicate
+        app['suspect_duplicate'] = is_suspect_duplicate(
+            app.get('first_name', ''), 
+            app.get('last_name', ''), 
+            app.get('email', ''), 
+            db_path=get_db_path()
+        )
         final_applicants.append(app)
     
     conn.close()
