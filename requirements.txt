@@ -1,5 +1,5 @@
 qrcode
-python-docx
+
 Pillow
 Flask
 python-dotenv

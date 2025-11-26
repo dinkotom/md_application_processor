@@ -369,14 +369,7 @@ def applicant_detail(id):
         exclude_id=app_dict.get('id')
     )
     
-    # Determine QR code path
-    mid = app_dict.get('membership_id', '0000')
-    safe_mid = "".join([c for c in mid if c.isalnum()])
-    safe_last = "".join([c for c in app_dict.get('last_name', '') if c.isalpha() or c.isdigit()]).rstrip()
-    safe_first = "".join([c for c in app_dict.get('first_name', '') if c.isalpha() or c.isdigit()]).rstrip()
-    qr_filename = f"{safe_mid}_{safe_last}_{safe_first}_qr.png"
-    
-    return render_template('detail.html', applicant=app_dict, qr_filename=qr_filename)
+    return render_template('detail.html', applicant=app_dict)
 
 @app.route('/applicant/<int:id>/card')
 def applicant_card(id):
@@ -418,28 +411,7 @@ def applicant_card(id):
         download_name=filename
     )
 
-@app.route('/qr_code/<int:id>')
-def serve_qr_code(id):
-    """Generate and serve QR code on demand"""
-    from flask import send_file
-    from src.generator import generate_qr_code_bytes
-    from io import BytesIO
-    
-    conn = get_db_connection()
-    applicant = conn.execute('SELECT * FROM applicants WHERE id = ?', (id,)).fetchone()
-    conn.close()
-    
-    if applicant is None:
-        return "Applicant not found", 404
-        
-    # Convert to dict for generator
-    data = dict(applicant)
-    
-    # Generate QR code bytes
-    img_io = generate_qr_code_bytes(data)
-    img_io.seek(0)
-    
-    return send_file(img_io, mimetype='image/png')
+
 
 @app.route('/stats')
 def stats():
@@ -681,27 +653,8 @@ def import_confirm():
         
         for row in rows:
             # Map CSV columns to database fields
-            # CSV columns: id, jmeno, prijmeni, email, telefon, datum_narozeni, bydliste, skola, 
-            # oblast_kultury, povaha, intenzita_vyuzivani, zdroje, kde, volne_sdeleni, barvy
-            data = {
-                'first_name': row.get('jmeno', '').strip(),
-                'last_name': row.get('prijmeni', '').strip(),
-                'email': row.get('email', '').strip(),
-                'phone': row.get('telefon', '').strip(),
-                'dob': row.get('datum_narozeni', '').strip(),
-                'membership_id': row.get('id', '').strip(),  # CSV id column
-                'city': row.get('bydliste', '').strip(),
-                'school': row.get('skola', '').strip(),
-                'interests': row.get('oblast_kultury', '').strip(),
-                'character': row.get('povaha', '').strip(),
-                'frequency': row.get('intenzita_vyuzivani', '').strip(),
-                'source': row.get('zdroje', '').strip(),
-                'source_detail': row.get('kde', '').strip(),
-                'message': row.get('volne_sdeleni', '').strip(),
-                'color': row.get('barvy', '').strip(),
-                'newsletter': row.get('souhlas', '').strip(),
-                'full_body': ''  # CSV imports don't have email body
-            }
+            from src.parser import parse_csv_row
+            data = parse_csv_row(row)
             
             record_applicant(data, db_path=get_db_path())
     finally:

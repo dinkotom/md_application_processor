@@ -119,10 +119,7 @@
         <p>{{ applicant.newsletter or 'Bez odpovědi' }}</p>
     </div>
 
-    <div class="detail-card full-width">
-        <h3>QR Kód</h3>
-        <img src="{{ url_for('serve_qr_code', id=applicant.id) }}" alt="QR Code" style="max-width: 200px;">
-    </div>
+
 
     <div class="detail-card full-width">
         <h3>Původní e-mail</h3>

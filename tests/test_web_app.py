@@ -1,0 +1,127 @@
+import unittest
+import sys
+import os
+import sqlite3
+from io import BytesIO
+
+# Add project root to path
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
+from web_app import app, get_db_connection
+
+class TestWebApp(unittest.TestCase):
+    
+    def setUp(self):
+        # Configure app for testing
+        app.config['TESTING'] = True
+        app.config['SECRET_KEY'] = 'test-key'
+        self.client = app.test_client()
+        
+        # Setup temporary test database
+        self.db_path = 'test_temp.db'
+        
+        # Initialize database schema
+        conn = sqlite3.connect(self.db_path)
+        cursor = conn.cursor()
+        cursor.execute('''
+            CREATE TABLE applicants (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                first_name TEXT,
+                last_name TEXT,
+                email TEXT,
+                phone TEXT,
+                dob TEXT,
+                membership_id TEXT,
+                city TEXT,
+                school TEXT,
+                interests TEXT,
+                character TEXT,
+                frequency TEXT,
+                source TEXT,
+                source_detail TEXT,
+                message TEXT,
+                color TEXT,
+                newsletter TEXT,
+                full_body TEXT,
+                status TEXT DEFAULT 'Nová',
+                deleted INTEGER DEFAULT 0,
+                exported_to_ecomail INTEGER DEFAULT 0,
+                exported_at TIMESTAMP,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                UNIQUE(first_name, last_name, email)
+            );
+        ''')
+        
+        # Insert sample data
+        cursor.execute('''
+            INSERT INTO applicants (first_name, last_name, email, dob, membership_id, city, status)
+            VALUES (?, ?, ?, ?, ?, ?, ?)
+        ''', ('Jan', 'Novák', 'jan.novak@example.com', '01.01.2000', '1001', 'Praha', 'Nová'))
+        
+        conn.commit()
+        conn.close()
+        
+        # Patch get_db_path/connection to use our temp DB
+        # Since we can't easily patch the global function in the imported module without mocking,
+        # we will rely on the fact that we can override the DB path if we modify the function or 
+        # use a context manager. 
+        # However, web_app.py imports sqlite3 and uses a global DB_PATH_TEST.
+        # Let's try to patch the get_db_path function in web_app module.
+        
+        import web_app
+        self.original_get_db_path = web_app.get_db_path
+        web_app.get_db_path = lambda: self.db_path
+
+    def tearDown(self):
+        # Restore original function
+        import web_app
+        web_app.get_db_path = self.original_get_db_path
+        
+        # Remove temp database
+        if os.path.exists(self.db_path):
+            os.remove(self.db_path)
+
+    def test_index_page(self):
+        """Test that the index page loads and shows the applicant"""
+        response = self.client.get('/')
+        self.assertEqual(response.status_code, 200)
+        self.assertIn(b'Jan', response.data)
+        self.assertIn(b'Nov\xc3\xa1k', response.data) # Novák in utf-8
+
+    def test_applicant_detail(self):
+        """Test that the applicant detail page loads"""
+        # Get the ID of the inserted applicant (should be 1)
+        response = self.client.get('/applicant/1')
+        self.assertEqual(response.status_code, 200)
+        self.assertIn(b'Jan', response.data)
+        self.assertIn(b'1001', response.data)
+
+    def test_stats_page(self):
+        """Test that the stats page loads"""
+        response = self.client.get('/stats')
+        self.assertEqual(response.status_code, 200)
+        self.assertIn(b'Statistiky', response.data)
+        self.assertIn(b'Praha', response.data)
+
+    def test_update_status(self):
+        """Test updating applicant status"""
+        response = self.client.post('/applicant/1/update_status', data={
+            'status': 'Vyřízená'
+        }, follow_redirects=True)
+        
+        self.assertEqual(response.status_code, 200)
+        
+        # Verify change in DB
+        conn = sqlite3.connect(self.db_path)
+        status = conn.execute('SELECT status FROM applicants WHERE id = 1').fetchone()[0]
+        conn.close()
+        self.assertEqual(status, 'Vyřízená')
+
+    def test_download_card(self):
+        """Test downloading the membership card"""
+        response = self.client.get('/applicant/1/card')
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.mimetype, 'image/png')
+
+if __name__ == '__main__':
+    unittest.main()

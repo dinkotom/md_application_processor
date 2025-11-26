@@ -1,19 +1,18 @@
 # Application Processor
 
-A Python application that processes club membership applications received via email, generates QR codes, and creates formatted Word documents with verification checks.
+A Python web application that processes club membership applications received via email, generates QR codes, and manages applicant data.
 
 ## Features
 
 - **Email Processing**: Fetches emails with subject "Nová Přihláška" from Gmail
 - **Data Parsing**: Extracts applicant information (name, DOB, email, phone, membership ID)
-- **QR Code Generation**: Creates QR codes with applicant details (white on dark blue)
-- **Document Generation**: Produces Word documents with:
-  - Applicant details
-  - Age verification (warns if < 15 or ≥ 25)
-  - Email-name match verification
-  - Duplicate detection
-  - QR code
-  - Original email content
+- **QR Code Generation**: Creates QR codes with applicant details (used on membership cards)
+- **Membership Card Generation**: Generates printable membership cards
+- **Web Dashboard**:
+  - View all applicants
+  - Filter by status, age, city, school
+  - View statistics
+  - Export to Ecomail
 - **Database Storage**: SQLite database for duplicate checking and record keeping
 
 ## Prerequisites
@@ -38,88 +37,25 @@ pip3 install -r requirements.txt
 4. Generate a new app password for "Mail"
 5. Save the 16-character password
 
-### 3. Set Environment Variables (Optional)
+### 3. Set Environment Variables
 
-You can set environment variables to avoid entering credentials each time:
+Create a `.env` file:
 
 ```bash
-export EMAIL_USER='your-email@gmail.com'
-export EMAIL_PASS='your-app-password'
+EMAIL_USER='your-email@gmail.com'
+EMAIL_PASS='your-app-password'
+SECRET_KEY='your-secret-key'
 ```
 
 ## Running the Application
 
-### Test Mode (Default)
+### Web Dashboard
 
 ```bash
-python3 src/main.py
+python3 web_app.py
 ```
 
-**Test mode behavior:**
-- Uses `applications_test.db`
-- Database is **cleared on each run**
-- Output folder `processed_applications_test/` is **cleared**
-- Emails remain **UNREAD** in Gmail (for repeated testing)
-- Ideal for testing and development
-
-### Production Mode
-
-```bash
-python3 src/main.py --production
-```
-
-**Production mode behavior:**
-- Uses `applications.db`
-- Records are **preserved across runs**
-- Output folder `processed_applications/` **preserves existing files**
-- Emails are **MARKED AS READ** after processing
-- Duplicate detection works across multiple runs
-- Use this for actual production processing
-
-### Help
-
-```bash
-python3 src/main.py --help
-```
-
-### Authentication
-
-If you haven't set environment variables, you'll be prompted to enter:
-- Gmail address
-- App password
-
-### What Happens
-
-**Test Mode:**
-1. **Cleans output directory**: `processed_applications_test/` is deleted and recreated
-2. **Clears test database**: `applications_test.db` is reset
-3. **Fetches unread emails**: Only emails with subject "Nová Přihláška"
-4. **Processes each email**:
-   - Parses applicant data
-   - Checks for duplicates
-   - Generates QR code
-   - Creates Word document
-   - Stores data in database
-5. **Output**: Files saved as `{ID}_{Surname}_{FirstName}.docx`
-
-**Production Mode:**
-1. **Preserves output directory**: `processed_applications/` keeps existing files
-2. **Preserves database**: `applications.db` retains all records
-3. **Fetches unread emails**: Only emails with subject "Nová Přihláška"
-4. **Processes each email** (same as test mode)
-5. **Output**: Files saved as `{ID}_{Surname}_{FirstName}.docx`
-
-### Output
-
-**Test Mode:**
-- **Documents**: `processed_applications_test/{ID}_{Surname}_{FirstName}.docx`
-- **QR Codes**: `processed_applications_test/{ID}_{Surname}_{FirstName}_qr.png`
-- **Database**: `applications_test.db` (cleared on each run)
-
-**Production Mode:**
-- **Documents**: `processed_applications/{ID}_{Surname}_{FirstName}.docx`
-- **QR Codes**: `processed_applications/{ID}_{Surname}_{FirstName}_qr.png`
-- **Database**: `applications.db` (preserved across runs)
+Open http://localhost:5000 in your browser.
 
 ## Database
 

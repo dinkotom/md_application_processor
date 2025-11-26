@@ -1,7 +1,6 @@
 import qrcode
 from PIL import Image, ImageDraw, ImageFont
-from docx import Document
-from docx.shared import Inches
+
 from typing import Dict
 import os
 
@@ -95,63 +94,7 @@ def normalize_text(text: str) -> str:
     nfkd_form = unicodedata.normalize('NFKD', text)
     return "".join([c for c in nfkd_form if not unicodedata.combining(c)]).lower()
 
-def generate_document(data: Dict[str, str], qr_code_path: str, output_path: str, is_duplicate: bool = False):
-    """
-    Generates a Word document with the application details and QR code.
-    """
-    doc = Document()
-    
-    # 1. Header: Name Surname
-    full_name = f"{data.get('first_name', '')} {data.get('last_name', '')}"
-    doc.add_heading(full_name, 0)
-    
-    # 2. Details
-    doc.add_paragraph(f"Číslo karty: {data.get('membership_id', '')}")
-    doc.add_paragraph(f"Datum narození: {data.get('dob', '')}")
-    doc.add_paragraph(f"Email: {data.get('email', '')}")
-    doc.add_paragraph(f"Telefon: {data.get('phone', '')}")
-    
-    # 3. Warnings
-    warnings = []
-    
-    # Age Check
-    age = calculate_age(data.get('dob', ''))
-    if age < 15 or age >= 25:
-        warnings.append(f"⚠️ POZOR: Uchazeč má {age} let.")
-        
-    # Email-Name Check
-    last_name = data.get('last_name', '')
-    email = data.get('email', '')
-    
-    norm_last = normalize_text(last_name)
-    norm_email = normalize_text(email)
-    
-    if norm_last and norm_last not in norm_email:
-        warnings.append("⚠️ POZOR: Email neodpovídá jménu.")
-        
-    # Duplicate Check
-    if is_duplicate:
-        warnings.append("⚠️ POZOR: Duplicitní přihláška.")
-        
-    if warnings:
-        doc.add_paragraph()
-        for w in warnings:
-            run = doc.add_paragraph().add_run(w)
-            run.bold = True
-    
-    # 4. QR Code (Centered)
-    doc.add_paragraph()
-    p = doc.add_paragraph()
-    p.alignment = 1 # Center
-    run = p.add_run()
-    run.add_picture(qr_code_path, width=Inches(2.0))
-    
-    # 5. Original Email
-    doc.add_heading('Původní e-mail:', level=2)
-    doc.add_paragraph(data.get('full_body', ''))
-    
-    doc.save(output_path)
-    print(f"Document saved to {output_path}")
+
 
 def generate_membership_card(data: Dict[str, str]):
     """
@@ -243,7 +186,7 @@ if __name__ == "__main__":
     doc_path = "test_application.docx"
     
     generate_qr_code(test_data, qr_path)
-    generate_document(test_data, qr_path, doc_path)
+    # generate_document(test_data, qr_path, doc_path)
     
     # Cleanup
     if os.path.exists(qr_path):

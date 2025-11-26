@@ -37,7 +37,7 @@ def parse_email_body(body: str) -> Dict[str, str]:
         'city': r'Odkud pocházíš\?\s*:[ \t]*([^\n]*)',
         'school': r'Kam chodíš do školy\?\s*:[ \t]*([^\n]*)',
         'interests': r'Co tě nejvíc zajímá\?\s*:[ \t]*([^\n]*)',
-        'character': r'Jsi\\s*\\.\\.\\.\\s*:[ \t]*([^\\n]*)',
+        'character': r'Jsi\s*\.\.\.\s*:[ \t]*([^\n]*)',
         'frequency': r'Jak často během roku chceš navštěvovat doprovodný program Mladého diváka\?\s*:[ \t]*([^\n]*)',
         'source': r'Odkud ses o nás dozvěděl(?:/a)?\?\s*:[ \t]*([^\n]*)',
         'source_detail': r'(?:Odkud\?|Jinde\?)\s*:[ \t]*([^\n]*)',
@@ -57,6 +57,36 @@ def parse_email_body(body: str) -> Dict[str, str]:
     data['full_body'] = body
     
     return data
+
+def parse_csv_row(row: Dict[str, str]) -> Dict[str, str]:
+    """
+    Parses a CSV row dictionary into the application data format.
+    
+    Args:
+        row: A dictionary representing a row from the CSV file.
+        
+    Returns:
+        A dictionary containing mapped fields.
+    """
+    return {
+        'first_name': row.get('jmeno', '').strip(),
+        'last_name': row.get('prijmeni', '').strip(),
+        'email': row.get('email', '').strip(),
+        'phone': row.get('telefon', '').strip(),
+        'dob': row.get('datum_narozeni', '').strip(),
+        'membership_id': row.get('id', '').strip(),
+        'city': row.get('bydliste', '').strip(),
+        'school': row.get('skola', '').strip(),
+        'interests': row.get('oblast_kultury', '').strip(),
+        'character': row.get('povaha', '').strip(),
+        'frequency': row.get('intenzita_vyuzivani', '').strip(),
+        'source': row.get('zdroje', '').strip(),
+        'source_detail': row.get('kde', '').strip(),
+        'message': row.get('volne_sdeleni', '').strip(),
+        'color': row.get('barvy', '').strip(),
+        'newsletter': row.get('souhlas', '').strip(),
+        'full_body': ''  # CSV imports don't have email body
+    }
 
 if __name__ == "__main__":
     # Test with the sample provided
