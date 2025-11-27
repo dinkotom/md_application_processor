@@ -1,53 +1,50 @@
-# Changelog
-
-All notable changes to this project will be documented in this file.
-
-The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
-
 ## [1.1] - 2025-11-27
 
-### Added
-- **Email sending functionality**: Send membership cards via email with preview and confirmation
-- Email template editor in Advanced section with placeholder support
-- Email tracking (sent status and timestamp) in database
-- TEST mode safety: all emails in test mode go to configured test address
-- Email preview modal showing recipient, subject, body, and attachments
-- Czech localization for all email-related features
-- Changelog file and display on Advanced page
+### Přidáno
+- **Funkce odesílání emailů**: Odesílání členských karet emailem s náhledem a potvrzením
+- Editor šablony emailu v sekci Pokročilé s podporou zástupných symbolů
+- Sledování emailů (stav odeslání a časová značka) v databázi
+- Bezpečnost TEST režimu: všechny emaily v testovacím režimu jdou na nakonfigurovanou testovací adresu
+- Modální okno náhledu emailu zobrazující příjemce, předmět, text a přílohy
+- Česká lokalizace všech funkcí souvisejících s emailem
+- Soubor historie změn a zobrazení na stránce Pokročilé
 
-### Changed
-- Updated version number from 1.0 to 1.1
-- Improved table layout: removed phone number column, reduced font size
-- Fixed application received date wrapping issue
+### Změněno
+- Aktualizováno číslo verze z 1.0 na 1.1
+- Vylepšeno rozložení tabulky: odstraněn sloupec telefonního čísla, zmenšena velikost písma
+- Opraven problém se zalamováním data přijetí přihlášky
+- Opraveno přetékání emailové adresy na detailní stránce
+- Změněno rozložení detailní stránky z 1x4 na 2x2 dlaždice
 
-### Technical
-- Added `email_template` database table
-- Added `email_sent` and `email_sent_at` columns to applicants table
-- Created `src/email_sender.py` module for email functionality
-- Added email routes: `/email/template`, `/applicant/<id>/email/preview`, `/applicant/<id>/email/send`
+### Technické
+- Přidána databázová tabulka `email_template`
+- Přidány sloupce `email_sent` a `email_sent_at` do tabulky applicants
+- Vytvořen modul `src/email_sender.py` pro emailovou funkcionalitu
+- Přidány emailové routy: `/email/template`, `/applicant/<id>/email/preview`, `/applicant/<id>/email/send`
+- Přidána route `/changelog` pro zobrazení historie změn
 
 ---
 
 ## [1.0] - 2025-11-27
 
-### Added
-- Initial release
-- Web dashboard for viewing and managing applicants
-- Email fetching from Gmail
-- Membership card generation with QR codes
-- Statistics page with filtering
-- CSV import/export functionality
-- Dual mode support (Test/Production databases)
-- Application received date tracking and sorting
-- Age-based filtering and warnings
-- School and city normalization
-- Duplicate detection
-- Status management (Nová, Zpracovává se, Vyřízená)
+### Přidáno
+- Počáteční vydání
+- Webový dashboard pro prohlížení a správu uchazečů
+- Stahování emailů z Gmailu
+- Generování členských karet s QR kódy
+- Stránka statistik s filtrováním
+- Funkce importu/exportu CSV
+- Podpora duálního režimu (testovací/produkční databáze)
+- Sledování a řazení podle data přijetí přihlášky
+- Filtrování a varování podle věku
+- Normalizace škol a měst
+- Detekce duplicit
+- Správa stavů (Nová, Zpracovává se, Vyřízená)
 
-### Features
-- Applicant list with pagination
-- Detailed applicant view
-- Search and filtering capabilities
-- Membership card preview and download
-- Mode switching (Test/Production)
-- Database management tools
+### Funkce
+- Seznam uchazečů s stránkováním
+- Detailní zobrazení uchazeče
+- Možnosti vyhledávání a filtrování
+- Náhled a stažení členské karty
+- Přepínání režimů (Test/Produkce)
+- Nástroje pro správu databáze
