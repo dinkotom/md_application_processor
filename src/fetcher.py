@@ -14,7 +14,7 @@ def get_unread_emails(username: str, password: str, imap_server: str = "imap.gma
         mark_as_read: If True, mark emails as read after fetching (production mode)
     
     Returns:
-        List of tuples (email_uid, email_body_text)
+        List of tuples (email_uid, email_body_text, email_date)
     """
     mail = imaplib.IMAP4_SSL(imap_server)
     try:
@@ -76,8 +76,11 @@ def get_unread_emails(username: str, password: str, imap_server: str = "imap.gma
                                             body = part.get_payload(decode=True).decode()
                         else:
                             body = msg.get_payload(decode=True).decode()
-                            
-                        results.append((e_id.decode(), body))
+                        
+                        # Extract email date
+                        email_date = msg.get("Date")
+                        
+                        results.append((e_id.decode(), body, email_date))
         
         return results
                     

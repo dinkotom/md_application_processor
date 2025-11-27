@@ -106,7 +106,7 @@ def index():
     """Main dashboard page"""
     conn = get_db_connection()
     
-    # Get search parameters
+    # Get search and sort parameters
     search = request.args.get('search', '')
     filter_status = request.args.get('status', '')
     filter_age_group = request.args.get('age_group', '')
@@ -114,6 +114,8 @@ def index():
     filter_school = request.args.get('school', '')
     filter_interest = request.args.get('interest', '')
     filter_source = request.args.get('source', '')
+    sort_by = request.args.get('sort', 'id')  # Default sort by ID
+    sort_order = request.args.get('order', 'desc')  # Default descending
     
     # Build query
     query = "SELECT * FROM applicants WHERE deleted = 0 AND 1=1"
@@ -183,8 +185,15 @@ def index():
                     filtered_applicants.append(app)
         all_applicants = filtered_applicants
 
-    # Sort by ID desc
-    all_applicants.sort(key=lambda x: x['id'], reverse=True)
+    # Sort by ID or application_received
+    if sort_by == 'application_received':
+        # Sort by application_received, handling NULL values (put them last)
+        all_applicants.sort(
+            key=lambda x: (x.get('application_received') is None, x.get('application_received') or ''),
+            reverse=(sort_order == 'desc')
+        )
+    else:  # Default to ID
+        all_applicants.sort(key=lambda x: x['id'], reverse=(sort_order == 'desc'))
     
     # Pagination (in memory now since we might filter by age)
     page = request.args.get('page', 1, type=int)
@@ -267,10 +276,11 @@ def fetch_preview():
         new_count = 0
         duplicate_count = 0
         
-        for uid, body in emails:
+        for uid, body, email_date in emails:
             try:
                 data = parse_email_body(body)
-                data['_uid'] = uid  # Store UID for later processing
+                data['_uid'] = uid
+                data['_email_date'] = email_date  # Store email date for later
                 
                 # Check duplicate
                 if is_duplicate(data.get('membership_id'), db_path=get_db_path()):
@@ -319,7 +329,20 @@ def fetch_confirm():
             parsed_emails = json.load(f)
         
         # Import all non-duplicate emails
+        from email.utils import parsedate_to_datetime
+        
         for data in parsed_emails:
+            # Convert email date to ISO format
+            email_date_str = data.pop('_email_date', None)
+            if email_date_str:
+                try:
+                    dt = parsedate_to_datetime(email_date_str)
+                    data['application_received'] = dt.strftime('%Y-%m-%d %H:%M:%S')
+                except:
+                    data['application_received'] = None
+            else:
+                data['application_received'] = None
+            
             # Remove the UID before recording (not part of applicant data)
             data.pop('_uid', None)
             record_applicant(data, db_path=get_db_path())
@@ -411,6 +434,28 @@ def applicant_card(id):
         download_name=filename
     )
 
+@app.route('/applicant/<int:id>/card_preview')
+def serve_card_preview(id):
+    """Generate and serve membership card preview (not as download)"""
+    from flask import send_file
+    from src.generator import generate_membership_card
+    
+    conn = get_db_connection()
+    applicant = conn.execute('SELECT * FROM applicants WHERE id = ? AND deleted = 0', (id,)).fetchone()
+    conn.close()
+    
+    if applicant is None:
+        return "Applicant not found", 404
+    
+    app_dict = dict(applicant)
+    
+    # Generate card bytes
+    img_io = generate_membership_card(app_dict)
+    img_io.seek(0)
+    
+    # Send as inline image (not download)
+    return send_file(img_io, mimetype='image/png')
+
 
 
 @app.route('/stats')
@@ -480,6 +525,11 @@ def stats():
                          schools=sorted(schools.items(), key=lambda x: x[1], reverse=True)[:10],
                          interests=sorted(interests_count.items(), key=lambda x: x[1], reverse=True)[:10],
                          sources=sorted(sources.items(), key=lambda x: x[1], reverse=True))
+
+@app.route('/advanced')
+def advanced():
+    """Advanced settings page"""
+    return render_template('advanced.html')
 
 # Soft delete endpoint
 @app.route('/applicant/<int:id>/delete', methods=['POST'])

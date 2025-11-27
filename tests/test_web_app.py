@@ -47,6 +47,7 @@ class TestWebApp(unittest.TestCase):
                 deleted INTEGER DEFAULT 0,
                 exported_to_ecomail INTEGER DEFAULT 0,
                 exported_at TIMESTAMP,
+                application_received TIMESTAMP,
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                 UNIQUE(first_name, last_name, email)
             );

@@ -1,0 +1,228 @@
+{% extends "base.html" %}
+
+{% block title %}Pokročilé - Mladý divák{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h2>Pokročilé nastavení</h2>
+</div>
+
+<!-- Mode Switcher Section -->
+<div class="settings-section">
+    <h3>Režim databáze</h3>
+    <p class="subtitle">Přepínání mezi testovací a produkční databází</p>
+
+    <div class="mode-switcher"
+        style="display: flex; align-items: center; gap: 15px; background: #f5f5f5; padding: 15px 20px; border-radius: 8px; margin-top: 1rem;">
+        <span style="font-weight: bold;">Aktuální režim:</span>
+        {% if current_mode == 'production' %}
+        <span class="badge"
+            style="background-color: #dc3545; color: white; font-size: 1em; padding: 8px 16px;">PRODUKCE</span>
+        <a href="{{ url_for('switch_mode', mode='test') }}" class="btn btn-secondary">Přepnout na TEST</a>
+        {% else %}
+        <span class="badge"
+            style="background-color: #ffc107; color: black; font-size: 1em; padding: 8px 16px;">TEST</span>
+        <a href="{{ url_for('switch_mode', mode='production') }}" class="btn btn-secondary">Přepnout na PRODUKCI</a>
+        {% endif %}
+    </div>
+
+    <div class="info-box"
+        style="margin-top: 1rem; padding: 15px; background: #e3f2fd; border-left: 4px solid #2196f3; border-radius: 4px;">
+        <p style="margin: 0;"><strong>ℹ️ Info:</strong></p>
+        <ul style="margin: 0.5rem 0 0 1.5rem; padding: 0;">
+            <li><strong>TEST</strong> - Používá <code>applications_test.db</code>, vhodné pro testování</li>
+            <li><strong>PRODUKCE</strong> - Používá <code>applications.db</code>, pro ostré nasazení</li>
+        </ul>
+    </div>
+</div>
+
+<!-- CSV Import Section -->
+<div class="settings-section" style="margin-top: 2rem;">
+    <h3>Import dat</h3>
+    <p class="subtitle">Importovat uchazeče z CSV souboru</p>
+
+    <form id="csvUploadForm" enctype="multipart/form-data" style="margin-top: 1rem;">
+        <input type="file" id="csvFileInput" name="csv_file" accept=".csv" style="display: none;"
+            onchange="handleCSVUpload(event)">
+        <button type="button" class="btn btn-primary" onclick="document.getElementById('csvFileInput').click()">
+            <span style="margin-right: 0.5rem;">📄</span> Vybrat CSV soubor
+        </button>
+    </form>
+
+    <div class="info-box"
+        style="margin-top: 1rem; padding: 15px; background: #fff3cd; border-left: 4px solid #ffc107; border-radius: 4px;">
+        <p style="margin: 0;"><strong>⚠️ Formát CSV:</strong></p>
+        <p style="margin: 0.5rem 0 0 0;">CSV soubor musí obsahovat sloupce:
+            <code>id, jmeno, prijmeni, email, telefon, datum_narozeni, bydliste, skola, oblast_kultury, povaha, intenzita_vyuzivani, zdroje, kde, volne_sdeleni, barvy, souhlas</code>
+        </p>
+    </div>
+</div>
+
+<!-- Database Management Section (Test mode only) -->
+{% if current_mode != 'production' %}
+<div class="settings-section" style="margin-top: 2rem;">
+    <h3>Správa databáze</h3>
+    <p class="subtitle">Nástroje pro správu testovací databáze</p>
+
+    <button type="button" class="btn" style="background-color: #dc3545; color: white; margin-top: 1rem;"
+        onclick="openClearDbModal()">
+        <span style="margin-right: 0.5rem;">🗑️</span> Smazat testovací databázi
+    </button>
+
+    <div class="info-box"
+        style="margin-top: 1rem; padding: 15px; background: #ffebee; border-left: 4px solid #f44336; border-radius: 4px;">
+        <p style="margin: 0;"><strong>⚠️ Pozor:</strong> Tato akce je nevratná a smaže všechny záznamy v testovací
+            databázi.</p>
+    </div>
+</div>
+{% endif %}
+
+<!-- Clear DB Confirmation Modal -->
+<div id="clearDbModal" class="modal-overlay">
+    <div class="modal">
+        <div class="modal-title">⚠️ Smazat databázi?</div>
+        <div class="modal-body">
+            <p>Opravdu chcete smazat <strong>celou testovací databázi</strong>?</p>
+            <p style="color: #dc3545;">Tato akce je nevratná a smaže všechny přihlášky v testovacím režimu.</p>
+        </div>
+        <div class="modal-actions">
+            <button class="btn btn-secondary" onclick="closeClearDbModal()">Zrušit</button>
+            <form id="clearDbForm" action="{{ url_for('clear_database') }}" method="POST" style="display: inline;">
+                <button type="button" class="btn" style="background-color: #dc3545; color: white;"
+                    onclick="submitClearDb()">Ano, smazat vše</button>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Import Confirmation Modal -->
+<div id="importModal" class="modal-overlay">
+    <div class="modal">
+        <div class="modal-title">Potvrzení importu</div>
+        <div class="modal-body">
+            <p><span id="importSource">CSV soubor</span> obsahuje <strong id="importTotal">0</strong> záznamů.</p>
+            <p>Bude importováno: <strong id="importNew" style="color: var(--success-color);">0</strong> nových uchazečů
+            </p>
+            <p>Bude přeskočeno: <strong id="importDuplicates" style="color: var(--warning-color);">0</strong> duplicit
+            </p>
+            <br>
+            <p>Chcete pokračovat?</p>
+        </div>
+        <div class="modal-actions">
+            <button type="button" onclick="closeImportModal()" class="btn btn-secondary">Zrušit</button>
+            <button type="button" onclick="confirmImport()" class="btn btn-primary">Pokračovat</button>
+        </div>
+    </div>
+</div>
+
+<script>
+    function openClearDbModal() {
+        const modal = document.getElementById('clearDbModal');
+        modal.style.display = 'flex';
+        modal.offsetHeight;
+        modal.classList.add('active');
+    }
+
+    function closeClearDbModal() {
+        const modal = document.getElementById('clearDbModal');
+        modal.classList.remove('active');
+        setTimeout(() => {
+            modal.style.display = 'none';
+        }, 300);
+    }
+
+    function submitClearDb() {
+        closeClearDbModal();
+        document.getElementById('clearDbForm').submit();
+    }
+
+    // CSV Import handling
+    async function handleCSVUpload(event) {
+        const file = event.target.files[0];
+        if (!file) return;
+
+        const formData = new FormData();
+        formData.append('csv_file', file);
+
+        try {
+            const response = await fetch('{{ url_for("import_preview") }}', {
+                method: 'POST',
+                body: formData
+            });
+
+            const stats = await response.json();
+
+            // Show confirmation modal
+            document.getElementById('importSource').textContent = 'CSV soubor';
+            document.getElementById('importTotal').textContent = stats.total;
+            document.getElementById('importNew').textContent = stats.new;
+            document.getElementById('importDuplicates').textContent = stats.duplicates;
+
+            const modal = document.getElementById('importModal');
+            modal.style.display = 'flex';
+            modal.offsetHeight;
+            modal.classList.add('active');
+        } catch (error) {
+            console.error('Error uploading CSV:', error);
+            alert('Chyba při nahrávání CSV souboru.');
+        }
+
+        // Reset file input
+        event.target.value = '';
+    }
+
+    function closeImportModal() {
+        const modal = document.getElementById('importModal');
+        modal.classList.remove('active');
+        setTimeout(() => {
+            modal.style.display = 'none';
+        }, 300);
+    }
+
+    function confirmImport() {
+        fetch('{{ url_for("import_confirm") }}', {
+            method: 'POST'
+        }).then(() => {
+            window.location.href = '{{ url_for("index") }}';
+        });
+    }
+
+    // Close modals on click outside
+    window.onclick = function (event) {
+        const clearModal = document.getElementById('clearDbModal');
+        const importModal = document.getElementById('importModal');
+
+        if (event.target == clearModal) {
+            closeClearDbModal();
+        }
+        if (event.target == importModal) {
+            closeImportModal();
+        }
+    }
+</script>
+
+<style>
+    .settings-section {
+        background: white;
+        padding: 2rem;
+        border-radius: 8px;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    }
+
+    .settings-section h3 {
+        margin-top: 0;
+        color: #333;
+    }
+
+    .info-box {
+        font-size: 0.9em;
+    }
+
+    .info-box code {
+        background: rgba(0, 0, 0, 0.05);
+        padding: 2px 6px;
+        border-radius: 3px;
+        font-family: monospace;
+    }
+</style>
+{% endblock %}

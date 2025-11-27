@@ -13,6 +13,7 @@ A Python web application that processes club membership applications received vi
   - Filter by status, age, city, school
   - View statistics
   - Export to Ecomail
+  - Advanced settings (mode switching, CSV import, database management)
 - **Database Storage**: SQLite database for duplicate checking and record keeping
 
 ## Prerequisites

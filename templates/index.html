@@ -4,102 +4,17 @@
 
 {% block content %}
 <div class="page-header">
-    <div style="display: flex; justify-content: space-between; align-items: center; width: 100%;">
-        <h2>Přihlášky uchazečů</h2>
-
-        <!-- Mode Switcher -->
-        <div class="mode-switcher"
-            style="display: flex; align-items: center; gap: 10px; background: #f5f5f5; padding: 5px 10px; border-radius: 8px;">
-            <span style="font-weight: bold; font-size: 0.9em;">Režim:</span>
-            {% if current_mode == 'production' %}
-            <span class="badge" style="background-color: #dc3545; color: white;">PRODUKCE</span>
-            <a href="{{ url_for('switch_mode', mode='test') }}" class="btn btn-sm btn-outline-secondary"
-                style="font-size: 0.8em;">Přepnout na TEST</a>
-            {% else %}
-            <span class="badge" style="background-color: #ffc107; color: black;">TEST</span>
-            <a href="{{ url_for('switch_mode', mode='production') }}" class="btn btn-sm btn-outline-secondary"
-                style="font-size: 0.8em;">Přepnout na PRODUKCI</a>
-            {% endif %}
-        </div>
-    </div>
+    <h2>Přihlášky uchazečů</h2>
 
     <div style="display: flex; gap: 1rem; align-items: center; margin-top: 1rem;">
         <p class="subtitle" style="margin: 0;">Celkem: <strong>{{ total }}</strong> záznamů</p>
         <button type="button" class="btn btn-primary" onclick="handleEmailFetch(this)">
             <span style="margin-right: 0.5rem;">⬇️</span> Stáhnout nové přihlášky
         </button>
-        <form id="csvUploadForm" enctype="multipart/form-data" style="display: inline;">
-            <input type="file" id="csvFileInput" name="csv_file" accept=".csv" style="display: none;"
-                onchange="handleCSVUpload(event)">
-            <button type="button" class="btn btn-secondary" onclick="document.getElementById('csvFileInput').click()">
-                <span style="margin-right: 0.5rem;">📄</span> Importovat z CSV
-            </button>
-        </form>
-
-        {% if current_mode != 'production' %}
-        <button type="button" class="btn" style="background-color: #dc3545; color: white;" onclick="openClearDbModal()">
-            <span style="margin-right: 0.5rem;">🗑️</span> Smazat DB
-        </button>
-        {% endif %}
     </div>
 </div>
 
-<!-- Clear DB Confirmation Modal -->
-<div id="clearDbModal" class="modal-overlay">
-    <div class="modal">
-        <span class="close" onclick="closeClearDbModal()">&times;</span>
-        <div class="modal-title">⚠️ Smazat databázi?</div>
-        <div class="modal-body">
-            <p>Opravdu chcete smazat <strong>celou testovací databázi</strong>?</p>
-            <p style="color: #dc3545;">Tato akce je nevratná a smaže všechny přihlášky v testovacím režimu.</p>
-        </div>
-        <div class="modal-actions">
-            <button class="btn btn-secondary" onclick="closeClearDbModal()">Zrušit</button>
-            <form id="clearDbForm" action="{{ url_for('clear_database') }}" method="POST" style="display: inline;">
-                <button type="button" class="btn" style="background-color: #dc3545; color: white;"
-                    onclick="submitClearDb()">Ano, smazat vše</button>
-            </form>
-        </div>
-    </div>
-</div>
 
-<script>
-    function openClearDbModal() {
-        const modal = document.getElementById('clearDbModal');
-        modal.style.display = 'flex';
-        // Trigger reflow
-        modal.offsetHeight;
-        modal.classList.add('active');
-    }
-
-    function closeClearDbModal() {
-        const modal = document.getElementById('clearDbModal');
-        modal.classList.remove('active');
-        setTimeout(() => {
-            modal.style.display = 'none';
-        }, 300);
-    }
-
-    function submitClearDb() {
-        // Close modal immediately
-        closeClearDbModal();
-        // Submit form
-        document.getElementById('clearDbForm').submit();
-    }
-
-    // Close modal when clicking outside
-    window.onclick = function (event) {
-        var modal = document.getElementById('clearDbModal');
-        if (event.target == modal) {
-            modal.style.display = "none";
-        }
-        // Also handle import modal
-        var importModal = document.getElementById('importModal');
-        if (event.target == importModal) {
-            importModal.style.display = "none";
-        }
-    }
-</script>
 
 <div class="filters-container">
     <form action="{{ url_for('index') }}" method="GET" class="search-form">
@@ -165,12 +80,25 @@
     <table class="applicants-table">
         <thead>
             <tr>
-                <th>ID</th>
+                <th>
+                    <a href="{{ url_for('index', sort='id', order='asc' if (request.args.get('sort') == 'id' and request.args.get('order') == 'desc') else 'desc', search=search, status=filter_status, age_group=filter_age_group, city=filter_city, school=filter_school, interest=filter_interest, source=filter_source) }}"
+                        style="color: inherit; text-decoration: none;">
+                        ID {% if request.args.get('sort') == 'id' %}{{ '▲' if request.args.get('order') == 'asc' else
+                        '▼' }}{% endif %}
+                    </a>
+                </th>
                 <th>Jméno</th>
                 <th>Email</th>
                 <th>Telefon</th>
                 <th>Věk</th>
                 <th>Město</th>
+                <th>
+                    <a href="{{ url_for('index', sort='application_received', order='asc' if (request.args.get('sort') == 'application_received' and request.args.get('order') == 'desc') else 'desc', search=search, status=filter_status, age_group=filter_age_group, city=filter_city, school=filter_school, interest=filter_interest, source=filter_source) }}"
+                        style="color: inherit; text-decoration: none;">
+                        Přihláška přijata {% if request.args.get('sort') == 'application_received' %}{{ '▲' if
+                        request.args.get('order') == 'asc' else '▼' }}{% endif %}
+                    </a>
+                </th>
                 <th>Stav</th>
                 <th>Akce</th>
             </tr>
@@ -190,6 +118,13 @@
                     {% endif %}
                 </td>
                 <td>{{ app.city or '-' }}</td>
+                <td>
+                    {% if app.application_received %}
+                    {{ app.application_received[:16] }}
+                    {% else %}
+                    <span style="color: #999;">-</span>
+                    {% endif %}
+                </td>
                 <td>
                     <form action="{{ url_for('update_applicant_status', id=app.id) }}" method="POST" style="margin: 0;">
                         <select name="status" onchange="this.form.submit()"
@@ -414,43 +349,7 @@
         }
     }
 
-    // CSV Import handling
-    async function handleCSVUpload(event) {
-        const file = event.target.files[0];
-        if (!file) return;
 
-        const formData = new FormData();
-        formData.append('csv_file', file);
-
-        try {
-            const response = await fetch('{{ url_for("import_preview") }}', {
-                method: 'POST',
-                body: formData
-            });
-
-            const stats = await response.json();
-
-            // Set import type
-            currentImportType = 'csv';
-
-            // Show confirmation modal
-            document.getElementById('importSource').textContent = 'CSV soubor';
-            document.getElementById('importTotal').textContent = stats.total;
-            document.getElementById('importNew').textContent = stats.new;
-            document.getElementById('importDuplicates').textContent = stats.duplicates;
-
-            const modal = document.getElementById('importModal');
-            modal.style.display = 'flex';
-            modal.offsetHeight;
-            modal.classList.add('active');
-        } catch (error) {
-            console.error('Error uploading CSV:', error);
-            alert('Chyba při nahrávání CSV souboru.');
-        }
-
-        // Reset file input
-        event.target.value = '';
-    }
 
     function closeImportModal() {
         const modal = document.getElementById('importModal');

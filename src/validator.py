@@ -28,6 +28,7 @@ def init_db(db_path: str = DB_PATH):
             newsletter TEXT,
             full_body TEXT,
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            application_received TIMESTAMP,
             deleted INTEGER DEFAULT 0,
             status TEXT DEFAULT 'Nová',
             exported_to_ecomail INTEGER DEFAULT 0,
@@ -100,17 +101,18 @@ def record_applicant(data: dict, db_path: str = DB_PATH):
     color = data.get('color', '').strip()
     newsletter = data.get('newsletter', '').strip()
     full_body = data.get('full_body', '').strip()
+    application_received = data.get('application_received')  # Can be None for CSV imports
     
     try:
         cursor.execute('''
             INSERT INTO applicants (
                 first_name, last_name, email, phone, dob, membership_id,
                 city, school, interests, character, frequency, source,
-                source_detail, message, color, newsletter, full_body
+                source_detail, message, color, newsletter, full_body, application_received
             )
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         ''', (fn, ln, em, ph, dob, mid, city, school, interests, character, 
-              frequency, source, source_detail, message, color, newsletter, full_body))
+              frequency, source, source_detail, message, color, newsletter, full_body, application_received))
         conn.commit()
     except sqlite3.IntegrityError:
         # Already exists, ignore

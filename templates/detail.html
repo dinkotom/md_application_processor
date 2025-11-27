@@ -6,17 +6,6 @@
 <div class="page-header">
     <h2>{{ applicant.first_name }} {{ applicant.last_name }}</h2>
     <div class="actions">
-        {% if applicant.exported_to_ecomail %}
-        <span class="btn btn-success" style="cursor: default;" title="Exportováno {{ applicant.exported_at[:16] }}">
-            ✓ Exportováno do Ecomail
-        </span>
-        {% else %}
-        <form action="{{ url_for('export_applicant', id=applicant.id) }}" method="POST" style="display: inline;">
-            <button type="submit" class="btn btn-primary">Exportovat do Ecomail</button>
-        </form>
-        {% endif %}
-        <a href="{{ url_for('applicant_card', id=applicant.id) }}" class="btn btn-primary"
-            style="background-color: #36378c; border-color: #36378c;">Stáhnout průkaz</a>
         <button type="button" onclick="openDeleteModal()" class="btn btn-danger">Smazat</button>
         <button type="button" onclick="openEditModal()" class="btn btn-secondary">Upravit</button>
         <a href="{{ url_for('index') }}" class="btn btn-secondary">← Zpět na seznam</a>
@@ -29,6 +18,18 @@
     ⚠️ <strong>POZOR:</strong> Podezřelá duplicitní přihláška (jméno, příjmení a e‑mail se shodují).
 </div>
 {% endif %}
+
+<div class="detail-card full-width" style="margin-bottom: 2rem;">
+    <h3>Členský průkaz</h3>
+    <div style="text-align: center;">
+        <img src="{{ url_for('serve_card_preview', id=applicant.id) }}" alt="Náhled členského průkazu"
+            style="max-width: 500px; width: 100%; height: auto; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); cursor: pointer;"
+            onclick="window.open('{{ url_for('applicant_card', id=applicant.id) }}', '_blank')">
+        <p style="margin-top: 0.5rem; font-size: 0.9em; color: #666;">
+            <em>Klikněte na obrázek pro stažení v plné kvalitě</em>
+        </p>
+    </div>
+</div>
 
 <div class="detail-grid">
     <div class="detail-card">
@@ -119,8 +120,6 @@
         <p>{{ applicant.newsletter or 'Bez odpovědi' }}</p>
     </div>
 
-
-
     <div class="detail-card full-width">
         <h3>Původní e-mail</h3>
         <pre class="email-body">{{ applicant.full_body }}</pre>
@@ -129,6 +128,9 @@
     <div class="detail-card full-width">
         <h3>Metadata</h3>
         <dl>
+            <dt>Přihláška přijata:</dt>
+            <dd>{{ applicant.application_received or 'Není k dispozici (CSV import)' }}</dd>
+
             <dt>Datum vytvoření:</dt>
             <dd>{{ applicant.created_at }}</dd>
 

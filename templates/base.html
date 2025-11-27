@@ -11,12 +11,15 @@
 <body>
     <nav class="navbar">
         <div class="container">
-            <h1 class="logo">🎭 Mladý divák</h1>
+            <h1 class="logo">🎭 Mladý divák{% if current_mode != 'production' %} <span
+                    style="color: #ffc107; font-size: 0.7em;">TEST</span>{% endif %}</h1>
             <div class="nav-links">
                 <a href="{{ url_for('index') }}"
                     class="{% if request.endpoint == 'index' %}active{% endif %}">Přihlášky</a>
                 <a href="{{ url_for('stats') }}"
                     class="{% if request.endpoint == 'stats' %}active{% endif %}">Statistiky</a>
+                <a href="{{ url_for('advanced') }}"
+                    class="{% if request.endpoint == 'advanced' %}active{% endif %}">Pokročilé</a>
             </div>
         </div>
     </nav>
