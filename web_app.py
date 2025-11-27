@@ -22,6 +22,8 @@ from flask import session
 DB_PATH_TEST = 'applications_test.db'
 DB_PATH_PROD = 'applications.db'
 
+VERSION = "1.0"
+
 def get_db_path():
     """Get current database path based on session"""
     mode = session.get('mode', 'test')
@@ -36,7 +38,7 @@ def get_db_connection():
 @app.context_processor
 def inject_mode():
     """Inject current mode into templates"""
-    return dict(current_mode=session.get('mode', 'test'))
+    return dict(current_mode=session.get('mode', 'test'), version=VERSION)
 
 @app.route('/switch_mode/<mode>')
 def switch_mode(mode):
