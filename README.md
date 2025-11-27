@@ -1,159 +1,96 @@
 # Application Processor
 
-A Python web application that processes club membership applications received via email, generates QR codes, and manages applicant data.
+A Python web application for managing club membership applications. It automates the process of fetching applications from email, parsing data, checking for duplicates, and generating membership cards.
 
 ## Features
 
-- **Email Processing**: Fetches emails with subject "Nová Přihláška" from Gmail
-- **Data Parsing**: Extracts applicant information (name, DOB, email, phone, membership ID)
-- **QR Code Generation**: Creates QR codes with applicant details (used on membership cards)
-- **Membership Card Generation**: Generates printable membership cards
-- **Web Dashboard**:
-  - View all applicants
-  - Filter by status, age, city, school
-  - View statistics
-  - Export to Ecomail
-  - Advanced settings (mode switching, CSV import, database management)
-- **Database Storage**: SQLite database for duplicate checking and record keeping
+- **Web Dashboard**: User-friendly interface to manage applicants.
+- **Email Processing**: Fetches emails with subject "Nová Přihláška" from Gmail.
+- **Data Parsing**: Automatically extracts applicant details (name, DOB, email, phone, etc.).
+- **Duplicate Detection**: Checks for existing applicants based on name and email.
+- **Membership Cards**: Generates printable PNG membership cards with QR codes.
+- **Statistics**: Visualizes applicant demographics (age, city, school, interests).
+- **Filtering**: Advanced filtering by status, age group, city, and school.
+- **Import/Export**: Supports CSV import and Ecomail export.
+- **Dual Modes**: Separate Test and Production environments.
 
 ## Prerequisites
 
-- Python 3.10 or higher
+- Python 3.11 or higher
 - Gmail account with App Password enabled
 
-## Setup
+## Installation
 
-### 1. Install Dependencies
+1.  **Clone the repository** (if not already done):
+    ```bash
+    git clone <repository-url>
+    cd md_application_processor
+    ```
+
+2.  **Install dependencies**:
+    ```bash
+    pip3 install -r requirements.txt
+    ```
+
+3.  **Configure Environment**:
+    Create a `.env` file in the root directory:
+    ```bash
+    EMAIL_USER='your-email@gmail.com'
+    EMAIL_PASS='your-app-password'
+    SECRET_KEY='your-secret-key-change-in-production'
+    ```
+
+    > **Note**: To generate a Gmail App Password, go to Google Account > Security > 2-Step Verification > App passwords.
+
+## Usage
+
+### Starting the Application
+
+You can start the application using the provided helper script:
 
 ```bash
-cd /Users/tomas.dinkov/Desktop/md_application_processor
-pip3 install -r requirements.txt
+./start_app.sh
 ```
 
-### 2. Configure Gmail App Password
-
-1. Go to your Google Account settings
-2. Navigate to Security → 2-Step Verification
-3. Scroll to "App passwords"
-4. Generate a new app password for "Mail"
-5. Save the 16-character password
-
-### 3. Set Environment Variables
-
-Create a `.env` file:
-
-```bash
-EMAIL_USER='your-email@gmail.com'
-EMAIL_PASS='your-app-password'
-SECRET_KEY='your-secret-key'
-```
-
-## Running the Application
-
-### Web Dashboard
+Or run it directly with Python:
 
 ```bash
 python3 web_app.py
 ```
 
-Open http://localhost:5000 in your browser.
+The application will be accessible at `http://localhost:5000`.
 
-## Database
+### Operating Modes
 
-The application uses SQLite databases with two operating modes:
+The application supports two modes, which can be switched via the "Advanced" tab in the web interface:
 
-### Test Mode (Default)
-- **Database**: `applications_test.db`
-- **Behavior**: Cleared on each run
-- **Use case**: Testing, development, repeated runs on same emails
-
-### Production Mode (--production flag)
-- **Database**: `applications.db`
-- **Behavior**: Records preserved across runs
-- **Use case**: Actual production processing, building historical database
-
-### Viewing Database Records
-
-**Test database:**
-```bash
-sqlite3 applications_test.db "SELECT * FROM applicants;"
-```
-
-**Production database:**
-```bash
-sqlite3 applications.db "SELECT * FROM applicants;"
-```
-
-### Database Schema
-
-```sql
-CREATE TABLE applicants (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    first_name TEXT,
-    last_name TEXT,
-    email TEXT,
-    phone TEXT,
-    dob TEXT,
-    membership_id TEXT,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    UNIQUE(first_name, last_name, email)
-);
-```
-
-## Verification Checks
-
-### Age Check
-- **Warning**: Displayed if applicant is under 15 or 25 and older
-- **Format**: "⚠️ POZOR: Uchazeč má X let."
-
-### Email-Name Match
-- **Warning**: Displayed if last name doesn't appear in email address
-- **Format**: "⚠️ POZOR: Email neodpovídá jménu."
-
-### Duplicate Check
-- **Warning**: Displayed if same email + name combination exists
-- **Format**: "⚠️ POZOR: Duplicitní přihláška."
+-   **Test Mode (Default)**: Uses `applications_test.db`. Ideal for testing and development. Data may be cleared easily.
+-   **Production Mode**: Uses `applications.db`. Intended for actual applicant data.
 
 ## Project Structure
 
 ```
 md_application_processor/
+├── web_app.py              # Main Flask application
 ├── src/
-│   ├── __init__.py
-│   ├── main.py           # Main application entry point
-│   ├── fetcher.py        # Email fetching via IMAP
-│   ├── parser.py         # Email content parsing
-│   ├── generator.py      # QR code & document generation
-│   └── validator.py      # Duplicate checking & database
-├── processed_applications/  # Output directory
-├── applications_test.db     # Test database
-├── requirements.txt         # Python dependencies
-└── README.md               # This file
+│   ├── fetcher.py          # Email fetching logic
+│   ├── parser.py           # Email and CSV parsing
+│   ├── generator.py        # Membership card and QR generation
+│   ├── validator.py        # Data validation and duplicate checking
+│   └── ecomail.py          # Ecomail integration
+├── templates/              # HTML templates
+├── static/                 # CSS and assets
+├── applications.db         # Production database
+├── applications_test.db    # Test database
+└── requirements.txt        # Python dependencies
 ```
 
 ## Troubleshooting
 
-### "No unread emails found"
-- Check that emails have subject "Nová Přihláška"
-- Verify emails are unread in Gmail
-- Ensure IMAP is enabled in Gmail settings
+-   **No emails found**: Ensure emails have the exact subject "Nová Přihláška" and are marked as **unread** in Gmail.
+-   **Authentication failed**: Verify your `EMAIL_USER` and `EMAIL_PASS` in the `.env` file.
+-   **Database locked**: Ensure no other process (like an open SQLite browser) is holding a lock on the database file.
 
-### Authentication Error
-- Verify App Password is correct (16 characters, no spaces)
-- Check that 2-Step Verification is enabled
-- Try generating a new App Password
+## Version
 
-### Import Errors
-- Ensure all dependencies are installed: `pip3 install -r requirements.txt`
-- Verify Python version: `python3 --version` (should be 3.10+)
-
-## Notes
-
-- **Email Status**: Emails remain **unread** in Gmail after processing (uses `BODY.PEEK[]`)
-- **Test Mode**: Current configuration uses `applications_test.db` and clears it on each run
-- **Production Mode**: To preserve records across runs, modify `src/main.py` to use `applications.db` without clearing
-
-## Support
-
-For issues or questions, refer to the implementation plan and task documents in the `.gemini` directory.
-```
+Current Version: **1.0**
