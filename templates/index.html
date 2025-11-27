@@ -89,7 +89,6 @@
                 </th>
                 <th>Jméno</th>
                 <th>Email</th>
-                <th>Telefon</th>
                 <th>Věk</th>
                 <th>Město</th>
                 <th>
@@ -109,7 +108,6 @@
                 <td><span class="badge">{{ app.membership_id }}</span></td>
                 <td><strong>{{ app.first_name }} {{ app.last_name }}</strong></td>
                 <td><a href="mailto:{{ app.email }}">{{ app.email }}</a></td>
-                <td>{{ app.phone }}</td>
                 <td>
                     {% if app.age is not none %}
                     {{ app.age }} let
@@ -118,7 +116,7 @@
                     {% endif %}
                 </td>
                 <td>{{ app.city or '-' }}</td>
-                <td>
+                <td style="white-space: nowrap;">
                     {% if app.application_received %}
                     {{ app.application_received[:16] }}
                     {% else %}

@@ -22,7 +22,7 @@ from flask import session
 DB_PATH_TEST = 'applications_test.db'
 DB_PATH_PROD = 'applications.db'
 
-VERSION = "1.0"
+VERSION = "1.1"
 
 def get_db_path():
     """Get current database path based on session"""
@@ -736,6 +736,133 @@ def clear_database():
     conn.close()
     
     return redirect(url_for('index'))
+
+@app.route('/email/template', methods=['GET'])
+def get_email_template():
+    """Get current email template"""
+    conn = get_db_connection()
+    template = conn.execute('SELECT subject, body FROM email_template ORDER BY id DESC LIMIT 1').fetchone()
+    conn.close()
+    
+    if template:
+        return jsonify({
+            'subject': template['subject'],
+            'body': template['body']
+        })
+    else:
+        return jsonify({
+            'subject': '',
+            'body': ''
+        })
+
+@app.route('/email/template', methods=['POST'])
+def save_email_template():
+    """Save email template"""
+    subject = request.form.get('subject', '')
+    body = request.form.get('body', '')
+    
+    conn = get_db_connection()
+    
+    # Update or insert template
+    conn.execute('''
+        INSERT INTO email_template (subject, body, updated_at)
+        VALUES (?, ?, CURRENT_TIMESTAMP)
+    ''', (subject, body))
+    
+    conn.commit()
+    conn.close()
+    
+    return jsonify({'success': True, 'message': 'Template saved successfully'})
+
+@app.route('/applicant/<int:id>/email/preview', methods=['POST'])
+def preview_email(id):
+    """Preview email for applicant"""
+    from src.email_sender import preview_email as generate_preview
+    
+    conn = get_db_connection()
+    applicant = conn.execute('SELECT * FROM applicants WHERE id = ? AND deleted = 0', (id,)).fetchone()
+    template = conn.execute('SELECT subject, body FROM email_template ORDER BY id DESC LIMIT 1').fetchone()
+    conn.close()
+    
+    if not applicant:
+        return jsonify({'error': 'Applicant not found'}), 404
+    
+    if not template:
+        return jsonify({'error': 'Email template not configured'}), 400
+    
+    app_data = dict(applicant)
+    mode = session.get('mode', 'test')
+    
+    preview = generate_preview(app_data, template['subject'], template['body'], mode)
+    
+    return jsonify(preview)
+
+@app.route('/applicant/<int:id>/email/send', methods=['POST'])
+def send_email(id):
+    """Send email with membership card to applicant"""
+    from src.email_sender import send_email_with_card
+    from src.generator import generate_membership_card
+    
+    conn = get_db_connection()
+    applicant = conn.execute('SELECT * FROM applicants WHERE id = ? AND deleted = 0', (id,)).fetchone()
+    template = conn.execute('SELECT subject, body FROM email_template ORDER BY id DESC LIMIT 1').fetchone()
+    
+    if not applicant:
+        conn.close()
+        return jsonify({'error': 'Applicant not found'}), 404
+    
+    if not template:
+        conn.close()
+        return jsonify({'error': 'Email template not configured'}), 400
+    
+    app_data = dict(applicant)
+    mode = session.get('mode', 'test')
+    
+    # Generate membership card
+    card_bytes = generate_membership_card(app_data)
+    
+    # Get email credentials
+    email_user = os.environ.get('EMAIL_USER')
+    email_pass = os.environ.get('EMAIL_PASS')
+    
+    if not email_user or not email_pass:
+        conn.close()
+        return jsonify({'error': 'Email credentials not configured'}), 500
+    
+    # Send email
+    result = send_email_with_card(
+        app_data,
+        template['subject'],
+        template['body'],
+        card_bytes,
+        email_user,
+        email_pass,
+        mode
+    )
+    
+    if result['success']:
+        # Update database
+        conn.execute('''
+            UPDATE applicants 
+            SET email_sent = 1, email_sent_at = CURRENT_TIMESTAMP
+            WHERE id = ?
+        ''', (id,))
+        conn.commit()
+    
+    conn.close()
+    
+    return jsonify(result)
+
+@app.route('/changelog')
+def get_changelog():
+    """Get changelog content"""
+    from src.changelog import get_changelog as read_changelog
+    import markdown
+    
+    changelog_md = read_changelog()
+    changelog_html = markdown.markdown(changelog_md, extensions=['fenced_code', 'tables'])
+    
+    return jsonify({'content': changelog_html})
 
 if __name__ == '__main__':
     print(f"Starting web dashboard...")

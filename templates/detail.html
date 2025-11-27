@@ -6,6 +6,13 @@
 <div class="page-header">
     <h2>{{ applicant.first_name }} {{ applicant.last_name }}</h2>
     <div class="actions">
+        {% if applicant.email_sent %}
+        <span style="color: var(--success-color); margin-right: 1rem;">
+            ✓ Email odeslán {{ applicant.email_sent_at[:16] if applicant.email_sent_at else '' }}
+        </span>
+        {% else %}
+        <button type="button" onclick="openEmailModal()" class="btn btn-success">📧 Odeslat email s kartou</button>
+        {% endif %}
         <button type="button" onclick="openDeleteModal()" class="btn btn-danger">Smazat</button>
         <button type="button" onclick="openEditModal()" class="btn btn-secondary">Upravit</button>
         <a href="{{ url_for('index') }}" class="btn btn-secondary">← Zpět na seznam</a>
@@ -208,6 +215,22 @@
     </div>
 </div>
 
+<!-- Email Preview Modal -->
+<div id="emailModal" class="modal-overlay">
+    <div class="modal" style="max-width: 600px;">
+        <div class="modal-title">📧 Náhled emailu</div>
+        <div class="modal-body">
+            <div id="emailPreviewContent">
+                <p>Načítání náhledu...</p>
+            </div>
+        </div>
+        <div class="modal-actions">
+            <button class="btn btn-secondary" onclick="closeEmailModal()">Zrušit</button>
+            <button id="sendEmailBtn" class="btn btn-success" onclick="confirmSendEmail()">Odeslat email</button>
+        </div>
+    </div>
+</div>
+
 <script>
     function openEditModal() {
         const modal = document.getElementById('editModal');
@@ -254,9 +277,108 @@
     // Close on Escape key
     document.addEventListener('keydown', function (e) {
         if (e.key === 'Escape') {
-            closeEditModal(); // Try to close edit modal first
-            closeDeleteModal(); // Then try to close delete modal
+            closeEditModal();
+            closeDeleteModal();
+            closeEmailModal();
         }
     });
+
+    // Email Modal Functions
+    async function openEmailModal() {
+        const modal = document.getElementById('emailModal');
+        const previewContent = document.getElementById('emailPreviewContent');
+
+        // Show modal
+        modal.style.display = 'flex';
+        modal.offsetHeight;
+        modal.classList.add('active');
+
+        // Load preview
+        previewContent.innerHTML = '<p>Načítání náhledu...</p>';
+
+        try {
+            const response = await fetch('/applicant/{{ applicant.id }}/email/preview', {
+                method: 'POST'
+            });
+
+            const data = await response.json();
+
+            if (data.error) {
+                previewContent.innerHTML = `<p style="color: var(--danger-color);">Chyba: ${data.error}</p>`;
+                document.getElementById('sendEmailBtn').disabled = true;
+                return;
+            }
+
+            // Display preview
+            const testModeWarning = data.is_test_mode ?
+                `<div style="background: #fff3cd; padding: 0.75rem; border-radius: 4px; margin-bottom: 1rem; border-left: 4px solid #ffc107;">
+                    <strong>⚠️ TESTOVACÍ REŽIM:</strong> Email bude odeslán na <code>${data.recipient}</code> místo emailu uchazeče.
+                </div>` : '';
+
+            previewContent.innerHTML = `
+                ${testModeWarning}
+                <div style="margin-bottom: 1rem;">
+                    <strong>Komu:</strong> ${data.recipient}
+                </div>
+                <div style="margin-bottom: 1rem;">
+                    <strong>Předmět:</strong> ${data.subject}
+                </div>
+                <div style="margin-bottom: 1rem;">
+                    <strong>Text:</strong>
+                    <pre style="background: #f5f5f5; padding: 1rem; border-radius: 4px; white-space: pre-wrap; font-size: 0.9em;">${data.body}</pre>
+                </div>
+                <div style="margin-bottom: 1rem;">
+                    <strong>Příloha:</strong> Členská karta (PNG)
+                </div>
+            `;
+
+            document.getElementById('sendEmailBtn').disabled = false;
+
+        } catch (error) {
+            console.error('Error loading preview:', error);
+            previewContent.innerHTML = '<p style="color: var(--danger-color);">Chyba při načítání náhledu</p>';
+            document.getElementById('sendEmailBtn').disabled = true;
+        }
+    }
+
+    function closeEmailModal() {
+        const modal = document.getElementById('emailModal');
+        modal.classList.remove('active');
+        setTimeout(() => {
+            modal.style.display = 'none';
+        }, 300);
+    }
+
+    async function confirmSendEmail() {
+        const btn = document.getElementById('sendEmailBtn');
+        const originalText = btn.textContent;
+
+        btn.disabled = true;
+        btn.textContent = 'Odesílání...';
+
+        try {
+            const response = await fetch('/applicant/{{ applicant.id }}/email/send', {
+                method: 'POST'
+            });
+
+            const result = await response.json();
+
+            if (result.success) {
+                alert(`✓ ${result.message}`);
+                closeEmailModal();
+                // Reload page to show updated status
+                window.location.reload();
+            } else {
+                alert(`✗ Error: ${result.message || result.error}`);
+                btn.disabled = false;
+                btn.textContent = originalText;
+            }
+        } catch (error) {
+            console.error('Error sending email:', error);
+            alert('✗ Chyba při odesílání emailu');
+            btn.disabled = false;
+            btn.textContent = originalText;
+        }
+    }
 </script>
 {% endblock %}
