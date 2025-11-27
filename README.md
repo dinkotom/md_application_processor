@@ -6,6 +6,7 @@ A Python web application for managing club membership applications. It automates
 
 - **Web Dashboard**: User-friendly interface to manage applicants.
 - **Email Processing**: Fetches emails with subject "Nová Přihláška" from Gmail.
+- **Email Sending**: Sends membership cards via email with customizable templates and previews.
 - **Data Parsing**: Automatically extracts applicant details (name, DOB, email, phone, etc.).
 - **Duplicate Detection**: Checks for existing applicants based on name and email.
 - **Membership Cards**: Generates printable PNG membership cards with QR codes.
@@ -13,6 +14,8 @@ A Python web application for managing club membership applications. It automates
 - **Filtering**: Advanced filtering by status, age group, city, and school.
 - **Import/Export**: Supports CSV import and Ecomail export.
 - **Dual Modes**: Separate Test and Production environments.
+- **Changelog**: View version history directly in the application.
+- **Logging**: Comprehensive application logging for troubleshooting.
 
 ## Prerequisites
 
@@ -64,7 +67,7 @@ The application will be accessible at `http://localhost:5000`.
 
 The application supports two modes, which can be switched via the "Advanced" tab in the web interface:
 
--   **Test Mode (Default)**: Uses `applications_test.db`. Ideal for testing and development. Data may be cleared easily.
+-   **Test Mode (Default)**: Uses `applications_test.db`. Ideal for testing and development. Data may be cleared easily. Emails are redirected to a test address.
 -   **Production Mode**: Uses `applications.db`. Intended for actual applicant data.
 
 ## Project Structure
@@ -77,11 +80,14 @@ md_application_processor/
 │   ├── parser.py           # Email and CSV parsing
 │   ├── generator.py        # Membership card and QR generation
 │   ├── validator.py        # Data validation and duplicate checking
+│   ├── email_sender.py     # Email sending logic
+│   ├── changelog.py        # Changelog reader
 │   └── ecomail.py          # Ecomail integration
 ├── templates/              # HTML templates
 ├── static/                 # CSS and assets
 ├── applications.db         # Production database
 ├── applications_test.db    # Test database
+├── app.log                 # Application log file
 └── requirements.txt        # Python dependencies
 ```
 
@@ -93,4 +99,4 @@ md_application_processor/
 
 ## Version
 
-Current Version: **1.0**
+Current Version: **1.1**

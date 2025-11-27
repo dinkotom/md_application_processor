@@ -37,6 +37,77 @@ DB_PATH_PROD = 'applications.db'
 
 VERSION = "1.1"
 
+def init_db(db_path):
+    """Initialize database with schema if it doesn't exist"""
+    conn = sqlite3.connect(db_path)
+    cursor = conn.cursor()
+    
+    # Create applicants table
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS applicants (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            first_name TEXT,
+            last_name TEXT,
+            email TEXT,
+            phone TEXT,
+            dob TEXT,
+            membership_id TEXT,
+            city TEXT,
+            school TEXT,
+            interests TEXT,
+            character TEXT,
+            frequency TEXT,
+            source TEXT,
+            source_detail TEXT,
+            message TEXT,
+            color TEXT,
+            newsletter TEXT,
+            full_body TEXT,
+            status TEXT DEFAULT 'Nová',
+            deleted INTEGER DEFAULT 0,
+            exported_to_ecomail INTEGER DEFAULT 0,
+            exported_at TIMESTAMP,
+            application_received TIMESTAMP,
+            email_sent INTEGER DEFAULT 0,
+            email_sent_at TIMESTAMP,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            UNIQUE(first_name, last_name, email)
+        );
+    ''')
+    
+    # Create email_template table
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS email_template (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            subject TEXT NOT NULL,
+            body TEXT NOT NULL,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+    ''')
+    
+    # Insert default email template if none exists
+    cursor.execute('SELECT COUNT(*) FROM email_template')
+    if cursor.fetchone()[0] == 0:
+        default_subject = "Členská karta Mladý divák"
+        default_body = """Dobrý den {first_name} {last_name},
+
+děkujeme za Vaši přihlášku do programu Mladý divák.
+
+V příloze naleznete Vaši členskou kartu (číslo {membership_id}).
+
+S pozdravem,
+Tým Mladý divák"""
+        
+        cursor.execute('''
+            INSERT INTO email_template (subject, body)
+            VALUES (?, ?)
+        ''', (default_subject, default_body))
+    
+    conn.commit()
+    conn.close()
+    logger.info(f"Database initialized: {db_path}")
+
 def get_db_path():
     """Get current database path based on session"""
     mode = session.get('mode', 'test')
@@ -909,6 +980,10 @@ def get_changelog():
     return jsonify({'content': changelog_html})
 
 if __name__ == '__main__':
+    # Initialize databases
+    init_db(DB_PATH_TEST)
+    init_db(DB_PATH_PROD)
+    
     print(f"Starting web dashboard...")
     print(f"Databases: {DB_PATH_TEST} / {DB_PATH_PROD}")
     print(f"Open http://localhost:5000 in your browser")
