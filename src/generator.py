@@ -137,14 +137,14 @@ def generate_membership_card(data: Dict[str, str]):
         if not os.path.exists(font_path):
             raise FileNotFoundError(f"Font not found at {font_path}")
             
-        font_number = ImageFont.truetype(font_path, 45)
-        font_name = ImageFont.truetype(font_path, 45)
+        font_number = ImageFont.truetype(font_path, 25)
+        font_name = ImageFont.truetype(font_path, 25)
     except Exception as e:
         print(f"Warning: Could not load Noto Sans Mono Bold: {e}")
         try:
             # Fallback to Courier New Bold
-            font_number = ImageFont.truetype("/System/Library/Fonts/Supplemental/Courier New Bold.ttf", 45)
-            font_name = ImageFont.truetype("/System/Library/Fonts/Supplemental/Courier New Bold.ttf", 45)
+            font_number = ImageFont.truetype("/System/Library/Fonts/Supplemental/Courier New Bold.ttf", 25)
+            font_name = ImageFont.truetype("/System/Library/Fonts/Supplemental/Courier New Bold.ttf", 25)
         except:
             font_number = ImageFont.load_default()
             font_name = ImageFont.load_default()
@@ -153,7 +153,7 @@ def generate_membership_card(data: Dict[str, str]):
     membership_id = data.get('membership_id', '0000')
     # Position to the right of QR code
     number_x = qr_x + qr_size + 30  # 30px gap from QR code
-    number_y = qr_y + 7  # Moved 3px higher (was 10px)
+    number_y = qr_y + 15  # Moved 3px lower
     
     draw.text((number_x, number_y), membership_id, font=font_number, fill="white")
     

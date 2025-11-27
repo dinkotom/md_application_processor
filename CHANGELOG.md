@@ -15,6 +15,13 @@
 - Opraven problém se zalamováním data přijetí přihlášky
 - Opraveno přetékání emailové adresy na detailní stránce
 - Změněno rozložení detailní stránky z 1x4 na 2x2 dlaždice
+- **Zmenšena velikost písma na členské kartě** z 45 na 25 bodů pro lepší umístění dlouhých jmen
+- **Upravena pozice členského čísla** na kartě (posunuto o 8 pixelů níže)
+- **Změněna konvence pojmenování souborů** členských karet na formát `id_jmeno_prijmeni.png` (bez diakritiky)
+- **Změněna adresa odesílatele** na `info@mladydivak.cz` (From a Reply-To)
+- **Přidána favicona** (logo md)
+- Přeložena historie změn do češtiny
+- Odstraněna redundantní hlavička z historie změn
 
 ### Technické
 - Přidána databázová tabulka `email_template`

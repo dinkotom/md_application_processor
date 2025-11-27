@@ -11,7 +11,7 @@
             ✓ Email odeslán {{ applicant.email_sent_at[:16] if applicant.email_sent_at else '' }}
         </span>
         {% else %}
-        <button type="button" onclick="openEmailModal()" class="btn btn-success">📧 Odeslat email s kartou</button>
+        <button type="button" onclick="openEmailModal()" class="btn btn-success">Odeslat email s kartou</button>
         {% endif %}
         <button type="button" onclick="openDeleteModal()" class="btn btn-danger">Smazat</button>
         <button type="button" onclick="openEditModal()" class="btn btn-secondary">Upravit</button>

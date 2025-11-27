@@ -160,6 +160,7 @@ main {
     justify-content: center;
     transition: all 0.2s;
     white-space: nowrap;
+    font-family: inherit;
 }
 
 .btn-primary {

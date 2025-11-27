@@ -4,7 +4,7 @@ Web Dashboard for Application Processor
 Displays applicant data from the database
 """
 
-from flask import Flask, render_template, request, jsonify, redirect, url_for
+from flask import Flask, render_template, request, jsonify, redirect, url_for, send_from_directory
 import sqlite3
 import os
 from datetime import datetime
@@ -102,6 +102,11 @@ def slugify_status(status):
     return s
 
 app.jinja_env.filters['slugify_status'] = slugify_status
+
+@app.route('/favicon.ico')
+def favicon():
+    return send_from_directory(os.path.join(app.root_path, 'static'),
+                               'favicon.png', mimetype='image/png')
 
 @app.route('/')
 def index():
@@ -416,10 +421,12 @@ def applicant_card(id):
     # Generate card bytes
     img_io = generate_membership_card(app_dict)
     
-    # Filename
+    # Filename: id_name_surname without diacritics
+    from src.generator import normalize_text
     mid = app_dict.get('membership_id', '0000')
-    safe_last = "".join([c for c in app_dict.get('last_name', '') if c.isalpha() or c.isdigit()]).rstrip()
-    filename = f"prukaz_{mid}_{safe_last}.png"
+    first_name = normalize_text(app_dict.get('first_name', '')).replace(' ', '_')
+    last_name = normalize_text(app_dict.get('last_name', '')).replace(' ', '_')
+    filename = f"{mid}_{first_name}_{last_name}.png"
     
     # Save to temporary file
     temp_dir = tempfile.gettempdir()

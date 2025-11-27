@@ -77,18 +77,29 @@ def send_email_with_card(applicant_data, subject, body, card_image_bytes, email_
         
         # Create message
         msg = MIMEMultipart()
-        msg['From'] = email_user
+        msg['From'] = "info@mladydivak.cz"
+        msg['Reply-To'] = "info@mladydivak.cz"
         msg['To'] = recipient
         msg['Subject'] = rendered_subject
         
         # Add body
         msg.attach(MIMEText(rendered_body, 'plain', 'utf-8'))
         
-        # Add membership card as attachment
+        # Filename: id_name_surname without diacritics
+        first_name = render_email_template('{first_name}', applicant_data).lower().replace(' ', '_')
+        last_name = render_email_template('{last_name}', applicant_data).lower().replace(' ', '_')
+        mid = applicant_data.get('membership_id', '0000')
+        
+        # Remove diacritics
+        import unicodedata
+        first_name = ''.join(c for c in unicodedata.normalize('NFD', first_name) if unicodedata.category(c) != 'Mn')
+        last_name = ''.join(c for c in unicodedata.normalize('NFD', last_name) if unicodedata.category(c) != 'Mn')
+        
+        attachment_filename = f"{mid}_{first_name}_{last_name}.png"
+        
         card_image_bytes.seek(0)
-        image = MIMEImage(card_image_bytes.read(), name=f"clenska_karta_{applicant_data.get('membership_id', '0000')}.png")
-        image.add_header('Content-Disposition', 'attachment', 
-                        filename=f"clenska_karta_{applicant_data.get('membership_id', '0000')}.png")
+        image = MIMEImage(card_image_bytes.read(), name=attachment_filename)
+        image.add_header('Content-Disposition', 'attachment', filename=attachment_filename)
         msg.attach(image)
         
         # Send email via Gmail SMTP
