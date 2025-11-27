@@ -108,6 +108,9 @@ def generate_membership_card(data: Dict[str, str]):
     template_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'static', 'card_template.jpg')
     card = Image.open(template_path)
     
+    # Resize to requested resolution 1050x600
+    card = card.resize((1050, 600), Image.LANCZOS)
+    
     # Get card dimensions
     width, height = card.size
     
@@ -120,7 +123,8 @@ def generate_membership_card(data: Dict[str, str]):
     
     # Resize QR code - smaller to fit in top left corner
     qr_size = int(height * 0.55)  # 55% of card height
-    qr_pil = qr_pil.resize((qr_size, qr_size))
+    # Use LANCZOS for better quality downscaling
+    qr_pil = qr_pil.resize((qr_size, qr_size), Image.LANCZOS)
     
     # Position QR code in TOP LEFT corner (not covering faces)
     qr_x = 50
@@ -137,14 +141,14 @@ def generate_membership_card(data: Dict[str, str]):
         if not os.path.exists(font_path):
             raise FileNotFoundError(f"Font not found at {font_path}")
             
-        font_number = ImageFont.truetype(font_path, 25)
-        font_name = ImageFont.truetype(font_path, 25)
+        font_number = ImageFont.truetype(font_path, 28)
+        font_name = ImageFont.truetype(font_path, 28)
     except Exception as e:
         print(f"Warning: Could not load Noto Sans Mono Bold: {e}")
         try:
             # Fallback to Courier New Bold
-            font_number = ImageFont.truetype("/System/Library/Fonts/Supplemental/Courier New Bold.ttf", 25)
-            font_name = ImageFont.truetype("/System/Library/Fonts/Supplemental/Courier New Bold.ttf", 25)
+            font_number = ImageFont.truetype("/System/Library/Fonts/Supplemental/Courier New Bold.ttf", 28)
+            font_name = ImageFont.truetype("/System/Library/Fonts/Supplemental/Courier New Bold.ttf", 28)
         except:
             font_number = ImageFont.load_default()
             font_name = ImageFont.load_default()
@@ -153,7 +157,7 @@ def generate_membership_card(data: Dict[str, str]):
     membership_id = data.get('membership_id', '0000')
     # Position to the right of QR code
     number_x = qr_x + qr_size + 30  # 30px gap from QR code
-    number_y = qr_y + 15  # Moved 3px lower
+    number_y = qr_y + 45  # Moved another 10px lower
     
     draw.text((number_x, number_y), membership_id, font=font_number, fill="white")
     
@@ -166,7 +170,7 @@ def generate_membership_card(data: Dict[str, str]):
     
     # Save to bytes
     img_io = BytesIO()
-    card.save(img_io, 'PNG')
+    card.save(img_io, 'PNG', optimize=True)
     img_io.seek(0)
     return img_io
 
