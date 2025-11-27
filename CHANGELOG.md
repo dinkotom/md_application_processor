@@ -29,6 +29,7 @@
 - Vytvořen modul `src/email_sender.py` pro emailovou funkcionalitu
 - Přidány emailové routy: `/email/template`, `/applicant/<id>/email/preview`, `/applicant/<id>/email/send`
 - Přidána route `/changelog` pro zobrazení historie změn
+- **Logování aplikace**: Implementováno logování do souboru `app.log` (vyloučeno z git) pro sledování akcí a chyb
 
 ---
 

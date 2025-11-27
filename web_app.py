@@ -12,6 +12,19 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
+import logging
+
+# Configure logging
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+    handlers=[
+        logging.FileHandler("app.log"),
+        logging.StreamHandler()
+    ]
+)
+logger = logging.getLogger(__name__)
+
 app = Flask(__name__)
 app.secret_key = os.environ.get('SECRET_KEY', 'dev-secret-key-change-in-production')
 
@@ -45,6 +58,7 @@ def switch_mode(mode):
     """Switch between test and production mode"""
     if mode in ['test', 'production']:
         session['mode'] = mode
+        logger.info(f"Switched to {mode} mode")
     return redirect(request.referrer or url_for('index'))
 
 def calculate_age(dob_str):
@@ -625,20 +639,25 @@ def export_applicant(id):
     # Call mocked Ecomail API
     result = export_to_ecomail(app_data)
     
-    if result.get('success'):
-        # Update database
-        conn.execute('''
-            UPDATE applicants 
-            SET exported_to_ecomail = 1, exported_at = ?
-            WHERE id = ?
-        ''', (datetime.now().isoformat(), id))
-        conn.commit()
-    
-    conn.close()
-    
-    # Redirect back to referrer or index
-    referrer = request.referrer or url_for('index')
-    return redirect(referrer)
+    if result['success']:
+        # Update database status
+        try:
+            conn = get_db_connection() # Re-open connection for update
+            conn.execute('''
+                UPDATE applicants 
+                SET exported_to_ecomail = 1, exported_at = ? 
+                WHERE id = ?
+            ''', (datetime.now().strftime('%Y-%m-%d %H:%M:%S'), id))
+            conn.commit()
+            conn.close()
+            logger.info(f"Applicant {id} exported to Ecomail successfully.")
+        except Exception as e:
+            logger.error(f"Failed to update export status for applicant {id}: {str(e)}")
+            
+        return jsonify(result)
+    else:
+        logger.error(f"Failed to export applicant {id} to Ecomail: {result['message']}")
+        return jsonify(result), 500
 
 @app.route('/import/preview', methods=['POST'])
 def import_preview():
@@ -690,6 +709,7 @@ def import_preview():
         'duplicates': duplicate_count
     }
     
+    logger.info(f"CSV import preview: {new_count} new, {duplicate_count} duplicates.")
     return jsonify(session['import_stats'])
 
 @app.route('/import/confirm', methods=['POST'])
@@ -710,12 +730,28 @@ def import_confirm():
         with open(temp_file_path, 'r') as f:
             rows = json.load(f)
         
+        applicants = []
         for row in rows:
             # Map CSV columns to database fields
             from src.parser import parse_csv_row
             data = parse_csv_row(row)
+            applicants.append(data)
             
-            record_applicant(data, db_path=get_db_path())
+        conn = get_db_connection()
+        for app_data in applicants:
+            record_applicant(app_data, conn=conn) # Pass connection to avoid opening/closing for each record
+        conn.commit()
+        conn.close()
+        logger.info(f"Imported {len(applicants)} applicants from CSV")
+        
+        return jsonify({
+            'success': True, 
+            'message': f'Úspěšně importováno {len(applicants)} uchazečů',
+            'count': len(applicants)
+        })
+    except Exception as e:
+        logger.error(f"Import failed: {str(e)}")
+        return jsonify({'success': False, 'message': str(e)}), 500
     finally:
         # Clean up temporary file
         if os.path.exists(temp_file_path):
@@ -724,8 +760,6 @@ def import_confirm():
         # Clear session
         session.pop('import_file', None)
         session.pop('import_stats', None)
-    
-    return redirect(url_for('index'))
 
 @app.route('/clear_db', methods=['POST'])
 def clear_database():
@@ -734,6 +768,7 @@ def clear_database():
     
     if mode == 'production':
         # Protect production database
+        logger.warning("Attempted to clear database in production mode. Action blocked.")
         return redirect(url_for('index'))
         
     # Clear test database
@@ -741,6 +776,7 @@ def clear_database():
     conn.execute('DELETE FROM applicants')
     conn.commit()
     conn.close()
+    logger.info("Test database cleared.")
     
     return redirect(url_for('index'))
 
@@ -778,6 +814,7 @@ def save_email_template():
     
     conn.commit()
     conn.close()
+    logger.info("Email template saved.")
     
     return jsonify({'success': True, 'message': 'Template saved successfully'})
 
