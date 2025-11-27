@@ -70,6 +70,8 @@ def init_db(db_path):
             application_received TIMESTAMP,
             email_sent INTEGER DEFAULT 0,
             email_sent_at TIMESTAMP,
+            parent_email_warning_dismissed INTEGER DEFAULT 0,
+            duplicate_warning_dismissed INTEGER DEFAULT 0,
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             UNIQUE(first_name, last_name, email)
         );
@@ -140,6 +142,11 @@ def calculate_age(dob_str):
         dob = datetime.strptime(clean_dob, '%d.%m.%Y')
         today = datetime.today()
         age = today.year - dob.year - ((today.month, today.day) < (dob.month, dob.day))
+        
+        # Return None for future dates or age 0 (invalid data)
+        if age <= 0:
+            return None
+            
         return age
     except (ValueError, TypeError):
         return None
@@ -284,8 +291,25 @@ def index():
             key=lambda x: (x.get('application_received') is None, x.get('application_received') or ''),
             reverse=(sort_order == 'desc')
         )
-    else:  # Default to ID
-        all_applicants.sort(key=lambda x: x['id'], reverse=(sort_order == 'desc'))
+    else:  # Default to ID (membership_id)
+        def get_id_key(x):
+            try:
+                return int(x.get('membership_id', 0))
+            except (ValueError, TypeError):
+                # Handle non-numeric IDs (sort them at the end or beginning)
+                # For now, treat as 0 or use string sorting fallback?
+                # Let's try to return the string itself if possible, but we can't mix types in python 3 sort
+                # So let's return a tuple: (is_numeric, value)
+                return -1
+        
+        # Better approach: Sort by numeric value if possible, else by string
+        all_applicants.sort(
+            key=lambda x: (
+                0 if str(x.get('membership_id', '')).isdigit() else 1, 
+                int(x.get('membership_id')) if str(x.get('membership_id', '')).isdigit() else x.get('membership_id', '')
+            ), 
+            reverse=(sort_order == 'desc')
+        )
     
     # Pagination (in memory now since we might filter by age)
     page = request.args.get('page', 1, type=int)
@@ -305,15 +329,31 @@ def index():
         # app is a dict - always calculate age for display
         app['age'] = calculate_age(app['dob']) if app.get('dob') else None
         
-        # Check for suspect duplicate
-        from src.validator import is_suspect_duplicate
-        app['suspect_duplicate'] = is_suspect_duplicate(
-            app.get('first_name', ''), 
-            app.get('last_name', ''), 
-            app.get('email', ''), 
-            db_path=get_db_path(),
-            exclude_id=app.get('id')
+        from src.validator import is_suspect_parent_email
+        
+        # Check for suspect parent email
+        app['suspect_parent_email'] = (
+            is_suspect_parent_email(
+                app.get('first_name', ''),
+                app.get('last_name', ''),
+                app.get('email', '')
+            ) and not app.get('parent_email_warning_dismissed', 0)
         )
+        
+        # Check for duplicate contact (email/phone)
+        from src.validator import check_duplicate_contact
+        duplicates = check_duplicate_contact(
+            app.get('email', ''),
+            app.get('phone', ''),
+            current_id=app.get('id'),
+            db_path=get_db_path()
+        )
+        
+        app['is_duplicate'] = (
+            (duplicates['email_duplicate'] or duplicates['phone_duplicate']) 
+            and not app.get('duplicate_warning_dismissed', 0)
+        )
+        
         final_applicants.append(app)
     
     conn.close()
@@ -474,15 +514,31 @@ def applicant_detail(id):
     app_dict = dict(applicant)
     app_dict['age'] = calculate_age(app_dict.get('dob', '')) if app_dict.get('dob') else None
     
-    # Check for suspect duplicate
-    from src.validator import is_suspect_duplicate
-    app_dict['suspect_duplicate'] = is_suspect_duplicate(
-        app_dict.get('first_name', ''), 
-        app_dict.get('last_name', ''), 
-        app_dict.get('email', ''), 
-        db_path=get_db_path(),
-        exclude_id=app_dict.get('id')
+    from src.validator import is_suspect_parent_email
+    
+    # Check for suspect parent email
+    app_dict['suspect_parent_email'] = (
+        is_suspect_parent_email(
+            app_dict.get('first_name', ''),
+            app_dict.get('last_name', ''),
+            app_dict.get('email', '')
+        ) and not app_dict.get('parent_email_warning_dismissed', 0)
     )
+    
+    # Check for duplicate contact (email/phone)
+    from src.validator import check_duplicate_contact
+    duplicates = check_duplicate_contact(
+        app_dict.get('email', ''),
+        app_dict.get('phone', ''),
+        current_id=app_dict.get('id'),
+        db_path=get_db_path()
+    )
+    
+    app_dict['is_duplicate'] = (
+        (duplicates['email_duplicate'] or duplicates['phone_duplicate']) 
+        and not app_dict.get('duplicate_warning_dismissed', 0)
+    )
+    app_dict['duplicate_details'] = duplicates
     
     return render_template('detail.html', applicant=app_dict)
 
@@ -674,6 +730,26 @@ def update_applicant_status(id):
     # Redirect back to the same page (index)
     return redirect(url_for('index'))
 
+@app.route('/applicant/<int:id>/dismiss_parent_warning', methods=['POST'])
+def dismiss_parent_warning(id):
+    """Dismiss parent email warning for an applicant"""
+    conn = get_db_connection()
+    conn.execute('UPDATE applicants SET parent_email_warning_dismissed = 1 WHERE id = ?', (id,))
+    conn.commit()
+    conn.close()
+    logger.info(f"Dismissed parent email warning for applicant {id}")
+    return redirect(url_for('applicant_detail', id=id))
+
+@app.route('/applicant/<int:id>/dismiss_duplicate_warning', methods=['POST'])
+def dismiss_duplicate_warning(id):
+    """Dismiss duplicate contact warning for an applicant"""
+    conn = get_db_connection()
+    conn.execute('UPDATE applicants SET duplicate_warning_dismissed = 1 WHERE id = ?', (id,))
+    conn.commit()
+    conn.close()
+    logger.info(f"Dismissed duplicate warning for applicant {id}")
+    return redirect(url_for('applicant_detail', id=id))
+
 @app.route('/applicant/<int:id>/qr')
 def qr_code(id):
     """Generate QR code on-the-fly for an applicant"""
@@ -808,11 +884,10 @@ def import_confirm():
             data = parse_csv_row(row)
             applicants.append(data)
             
-        conn = get_db_connection()
+        # Import all applicants
         for app_data in applicants:
-            record_applicant(app_data, conn=conn) # Pass connection to avoid opening/closing for each record
-        conn.commit()
-        conn.close()
+            record_applicant(app_data, db_path=get_db_path())
+        
         logger.info(f"Imported {len(applicants)} applicants from CSV")
         
         return jsonify({

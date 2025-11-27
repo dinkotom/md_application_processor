@@ -82,20 +82,21 @@
             <tr>
                 <th>
                     <a href="{{ url_for('index', sort='id', order='asc' if (request.args.get('sort') == 'id' and request.args.get('order') == 'desc') else 'desc', search=search, status=filter_status, age_group=filter_age_group, city=filter_city, school=filter_school, interest=filter_interest, source=filter_source) }}"
-                        style="color: inherit; text-decoration: none;">
+                        style="color: inherit; text-decoration: none; white-space: nowrap;">
                         ID {% if request.args.get('sort') == 'id' %}{{ '▲' if request.args.get('order') == 'asc' else
-                        '▼' }}{% endif %}
+                        '▼' }}{% else %}↕{% endif %}
                     </a>
                 </th>
                 <th>Jméno</th>
                 <th>Email</th>
+                <th>Telefon</th>
                 <th>Věk</th>
                 <th>Město</th>
                 <th>
                     <a href="{{ url_for('index', sort='application_received', order='asc' if (request.args.get('sort') == 'application_received' and request.args.get('order') == 'desc') else 'desc', search=search, status=filter_status, age_group=filter_age_group, city=filter_city, school=filter_school, interest=filter_interest, source=filter_source) }}"
-                        style="color: inherit; text-decoration: none;">
-                        Přihláška přijata {% if request.args.get('sort') == 'application_received' %}{{ '▲' if
-                        request.args.get('order') == 'asc' else '▼' }}{% endif %}
+                        style="color: inherit; text-decoration: none; white-space: nowrap;">
+                        Přihláška {% if request.args.get('sort') == 'application_received' %}{{ '▲' if
+                        request.args.get('order') == 'asc' else '▼' }}{% else %}↕{% endif %}
                     </a>
                 </th>
                 <th>Stav</th>
@@ -104,10 +105,12 @@
         </thead>
         <tbody>
             {% for app in applicants %}
-            <tr class="{% if app.age and (app.age < 15 or app.age >= 25) %}warning-row{% endif %}">
+            <tr
+                class="{% if app.age is none or (app.age and (app.age < 15 or app.age >= 25)) or app.suspect_parent_email or app.is_duplicate %}warning-row{% endif %}">
                 <td><span class="badge">{{ app.membership_id }}</span></td>
                 <td><strong>{{ app.first_name }} {{ app.last_name }}</strong></td>
                 <td><a href="mailto:{{ app.email }}">{{ app.email }}</a></td>
+                <td>{{ app.phone or '-' }}</td>
                 <td>
                     {% if app.age is not none %}
                     {{ app.age }} let
@@ -116,7 +119,7 @@
                     {% endif %}
                 </td>
                 <td>{{ app.city or '-' }}</td>
-                <td style="white-space: nowrap;">
+                <td>
                     {% if app.application_received %}
                     {{ app.application_received[:16] }}
                     {% else %}

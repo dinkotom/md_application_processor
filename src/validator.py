@@ -54,30 +54,96 @@ def is_duplicate(membership_id: str, db_path: str = DB_PATH) -> bool:
     conn.close()
     return result is not None
 
-def is_suspect_duplicate(first_name: str, last_name: str, email: str, db_path: str = DB_PATH, exclude_id: int = None) -> bool:
-    """Checks if a potential duplicate applicant exists based on first name, last name, and email."""
-    if not (first_name and last_name and email):
-        return False # Not enough info to check for suspect duplicate
 
+def is_suspect_parent_email(first_name: str, last_name: str, email: str) -> bool:
+    """
+    Checks if email address appears to belong to someone else (e.g., parent).
+    Returns True if the email doesn't contain any part of the applicant's name.
+    """
+    if not (first_name and last_name and email):
+        return False
+    
+    import unicodedata
+    
+    def normalize(text):
+        """Remove diacritics and convert to lowercase"""
+        nfkd = unicodedata.normalize('NFKD', text)
+        return ''.join([c for c in nfkd if not unicodedata.combining(c)]).lower()
+    
+    # Get email local part (before @)
+    email_local = email.split('@')[0].lower()
+    
+    # Normalize names
+    first = normalize(first_name.strip())
+    last = normalize(last_name.strip())
+    
+    # Check if any significant part of the name appears in email
+    # Significant = at least 3 characters
+    first_parts = [p for p in first.split() if len(p) >= 3]
+    last_parts = [p for p in last.split() if len(p) >= 3]
+    
+    for part in first_parts + last_parts:
+        if part in email_local:
+            return False  # Name found in email, looks legitimate
+    
+    # Also check for initials (first letter of first + last name)
+    if len(first) > 0 and len(last) > 0:
+        initials = first[0] + last[0]
+        if initials in email_local:
+            return False
+    
+    # No match found - suspect parent/other person's email
+    return True
+
+def check_duplicate_contact(email: str, phone: str, current_id: int = None, db_path: str = DB_PATH) -> dict:
+    """
+    Checks if email or phone number is already used by another applicant.
+    Returns a dict with 'email_duplicate' and 'phone_duplicate' booleans.
+    """
+    result = {'email_duplicate': False, 'phone_duplicate': False}
+    
+    if not (email or phone):
+        return result
+        
     conn = sqlite3.connect(db_path)
     cursor = conn.cursor()
-
-    # Check for existing records with the same first name, last name, and email
-    query = '''
-        SELECT id FROM applicants
-        WHERE first_name = ? AND last_name = ? AND email = ?
-    '''
-    params = [first_name.strip(), last_name.strip(), email.strip()]
     
-    if exclude_id is not None:
-        query += ' AND id != ?'
-        params.append(exclude_id)
+    # Check email duplicate
+    if email:
+        query = 'SELECT id FROM applicants WHERE email = ? AND deleted = 0'
+        params = [email.strip()]
         
-    cursor.execute(query, tuple(params))
-
-    result = cursor.fetchone()
+        if current_id is not None:
+            query += ' AND id != ?'
+            params.append(current_id)
+            
+        cursor.execute(query, tuple(params))
+        if cursor.fetchone():
+            result['email_duplicate'] = True
+            
+    # Check phone duplicate
+    if phone:
+        # Simple phone normalization (remove spaces)
+        clean_phone = phone.replace(' ', '').replace('-', '')
+        if len(clean_phone) > 5: # Only check if phone is substantial
+            # This is tricky because phones in DB might be formatted differently
+            # For now, let's just check exact match of what's in DB vs input
+            # Ideally we would normalize everything in DB or use a LIKE query
+            
+            query = 'SELECT id FROM applicants WHERE replace(replace(phone, " ", ""), "-", "") = ? AND deleted = 0'
+            params = [clean_phone]
+            
+            if current_id is not None:
+                query += ' AND id != ?'
+                params.append(current_id)
+                
+            cursor.execute(query, tuple(params))
+            if cursor.fetchone():
+                result['phone_duplicate'] = True
+    
     conn.close()
-    return result is not None
+    return result
+
 
 def record_applicant(data: dict, db_path: str = DB_PATH):
     """Records the applicant in the database."""

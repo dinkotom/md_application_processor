@@ -210,7 +210,7 @@ main {
 .applicants-table {
     width: 100%;
     border-collapse: collapse;
-    font-size: 0.9rem;
+    font-size: 0.85rem;
 }
 
 .applicants-table thead {
@@ -219,7 +219,7 @@ main {
 }
 
 .applicants-table th {
-    padding: 1rem;
+    padding: 0.5rem 0.75rem;
     text-align: left;
     font-weight: 600;
     font-size: 0.875rem;
@@ -228,7 +228,7 @@ main {
 }
 
 .applicants-table td {
-    padding: 1rem;
+    padding: 0.5rem 0.75rem;
     border-bottom: 1px solid var(--border-color);
 }
 

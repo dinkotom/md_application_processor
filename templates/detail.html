@@ -19,10 +19,32 @@
     </div>
 </div>
 
-{% if applicant.suspect_duplicate %}
+
+{% if applicant.suspect_parent_email %}
 <div class="alert alert-warning"
-    style="margin-bottom: 1rem; background-color: #fff3cd; color: #856404; padding: 0.75rem 1.25rem; border: 1px solid #ffeeba; border-radius: 0.25rem;">
-    ⚠️ <strong>POZOR:</strong> Podezřelá duplicitní přihláška (jméno, příjmení a e‑mail se shodují).
+    style="margin-bottom: 1rem; background-color: #fff3cd; color: #856404; padding: 0.75rem 1.25rem; border: 1px solid #ffeeba; border-radius: 0.25rem; display: flex; justify-content: space-between; align-items: center;">
+    <span>⚠️ <strong>POZOR:</strong> Email neobsahuje jméno uchazeče - pravděpodobně email rodiče nebo jiné
+        osoby.</span>
+    <form action="{{ url_for('dismiss_parent_warning', id=applicant.id) }}" method="POST" style="margin: 0;">
+        <button type="submit" class="btn btn-small"
+            style="background: #856404; color: white; padding: 0.25rem 0.75rem; font-size: 0.85rem;">Skrýt</button>
+    </form>
+</div>
+{% endif %}
+
+{% if applicant.is_duplicate %}
+<div class="alert alert-warning"
+    style="margin-bottom: 1rem; background-color: #fff3cd; color: #856404; padding: 0.75rem 1.25rem; border: 1px solid #ffeeba; border-radius: 0.25rem; display: flex; justify-content: space-between; align-items: center;">
+    <span>
+        ⚠️ <strong>POZOR:</strong> Nalezen duplicitní kontakt v databázi
+        {% if applicant.duplicate_details.email_duplicate %}(shodný email){% endif %}
+        {% if applicant.duplicate_details.phone_duplicate %}(shodný telefon){% endif %}.
+        Pravděpodobně se jedná o opakovanou přihlášku.
+    </span>
+    <form action="{{ url_for('dismiss_duplicate_warning', id=applicant.id) }}" method="POST" style="margin: 0;">
+        <button type="submit" class="btn btn-small"
+            style="background: #856404; color: white; padding: 0.25rem 0.75rem; font-size: 0.85rem;">Skrýt</button>
+    </form>
 </div>
 {% endif %}
 
@@ -56,14 +78,14 @@
 
             <dt>Věk:</dt>
             <dd>
-                {% if applicant.age %}
+                {% if applicant.age is not none %}
                 <span class="age-badge {% if applicant.age < 15 or applicant.age >= 25 %}age-warning{% endif %}">
                     {{ applicant.age }} let
                     {% if applicant.age < 15 %}(⚠️ Pod 15 let){% endif %} {% if applicant.age>= 25 %}(⚠️ Nad 24 let){%
                         endif %}
                 </span>
                 {% else %}
-                N/A
+                <span class="age-badge age-warning">N/A (⚠️ Neplatné datum narození)</span>
                 {% endif %}
             </dd>
 
