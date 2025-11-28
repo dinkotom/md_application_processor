@@ -100,6 +100,7 @@
                     </a>
                 </th>
                 <th>Stav</th>
+                <th style="text-align: center;">📝</th>
                 <th>Akce</th>
             </tr>
         </thead>
@@ -139,6 +140,21 @@
                             </option>
                         </select>
                     </form>
+                </td>
+                <td onclick="event.stopPropagation()" style="text-align: center;">
+                    <button
+                        onclick="openNoteModal({{ app.id }}, '{{ app.note | replace("'", "\\'") if app.note else '' }}')"
+                        style="border: none; background: none; cursor: pointer; padding: 0.25rem;"
+                        title="{% if app.note %}Zobrazit/upravit poznámku{% else %}Přidat poznámku{% endif %}">
+                        <svg width="16" height="16" viewBox="0 0 24 24"
+                            fill="{% if app.note %}#36378c{% else %}#ccc{% endif %}" stroke="currentColor"
+                            stroke-width="2">
+                            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                            <polyline points="14 2 14 8 20 8"></polyline>
+                            <line x1="12" y1="18" x2="12" y2="12"></line>
+                            <line x1="9" y1="15" x2="15" y2="15"></line>
+                        </svg>
+                    </button>
                 </td>
                 <td onclick="event.stopPropagation()">
                     <a href="{{ url_for('applicant_detail', id=app.id, **request.args) }}"
@@ -382,6 +398,90 @@
             closeImportModal();
         }
     });
-
 </script>
+
+<!-- Note Modal -->
+<div id="noteModal" class="modal-overlay">
+    <div class="modal">
+        <div class="modal-title">Poznámka</div>
+        <div class="modal-body">
+            <textarea id="noteText" rows="5"
+                style="width: 100%; padding: 0.75rem; border: 1px solid var(--border-color); border-radius: 0.5rem; font-family: inherit; resize: vertical;"></textarea>
+        </div>
+        <div class="modal-actions">
+            <button class="btn btn-secondary" onclick="closeNoteModal()">Zrušit</button>
+            <button class="btn btn-primary" onclick="saveNote()">Uložit</button>
+        </div>
+    </div>
+</div>
+
+<script>
+    let currentNoteApplicantId = null;
+
+    function openNoteModal(applicantId, currentNote) {
+        currentNoteApplicantId = applicantId;
+        document.getElementById('noteText').value = currentNote || '';
+
+        const modal = document.getElementById('noteModal');
+        modal.style.display = 'flex';
+        modal.offsetHeight;
+        modal.classList.add('active');
+
+        document.getElementById('noteText').focus();
+    }
+
+    function closeNoteModal() {
+        const modal = document.getElementById('noteModal');
+        modal.classList.remove('active');
+        setTimeout(() => {
+            modal.style.display = 'none';
+            currentNoteApplicantId = null;
+        }, 300);
+    }
+
+    async function saveNote() {
+        if (!currentNoteApplicantId) return;
+
+        const noteText = document.getElementById('noteText').value;
+
+        try {
+            const response = await fetch(`/applicant/${currentNoteApplicantId}/update_note`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    note: noteText
+                })
+            });
+
+            const result = await response.json();
+
+            if (result.success) {
+                closeNoteModal();
+                window.location.reload();
+            } else {
+                alert(`Chyba: ${result.error}`);
+            }
+        } catch (error) {
+            console.error('Error saving note:', error);
+            alert('Chyba při ukládání poznámky');
+        }
+    }
+
+    // Close modal on Escape key
+    document.addEventListener('keydown', function (e) {
+        if (e.key === 'Escape') {
+            closeNoteModal();
+        }
+    });
+
+    // Close modal on click outside
+    window.addEventListener('click', function (event) {
+        if (event.target.id === 'noteModal') {
+            closeNoteModal();
+        }
+    });
+</script>
+
 {% endblock %}

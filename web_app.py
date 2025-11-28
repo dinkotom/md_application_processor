@@ -72,6 +72,7 @@ def init_db(db_path):
             email_sent_at TIMESTAMP,
             parent_email_warning_dismissed INTEGER DEFAULT 0,
             duplicate_warning_dismissed INTEGER DEFAULT 0,
+            note TEXT,
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             UNIQUE(first_name, last_name, email)
         );
@@ -761,6 +762,24 @@ def update_applicant_field(id):
         conn.commit()
         return jsonify({'success': True})
     except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+    finally:
+        conn.close()
+
+@app.route('/applicant/<int:id>/update_note', methods=['POST'])
+def update_applicant_note(id):
+    """Update applicant note"""
+    data = request.get_json()
+    note = data.get('note', '')
+    
+    conn = get_db_connection()
+    try:
+        conn.execute('UPDATE applicants SET note = ? WHERE id = ?', (note, id))
+        conn.commit()
+        logger.info(f"Updated note for applicant {id}")
+        return jsonify({'success': True})
+    except Exception as e:
+        logger.error(f"Error updating note for applicant {id}: {e}")
         return jsonify({'success': False, 'error': str(e)}), 500
     finally:
         conn.close()
