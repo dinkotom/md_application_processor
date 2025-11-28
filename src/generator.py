@@ -108,8 +108,6 @@ def generate_membership_card(data: Dict[str, str]):
     template_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'static', 'card_template.jpg')
     card = Image.open(template_path)
     
-    # Resize to requested resolution 1050x600
-    card = card.resize((1050, 600), Image.LANCZOS)
     
     # Get card dimensions
     width, height = card.size

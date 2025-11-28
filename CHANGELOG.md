@@ -1,3 +1,38 @@
+## [1.2] - 2025-11-28
+
+### Přidáno
+- **Inline úpravy**: Úprava údajů uchazeče přímo na detailní stránce pomocí ikon tužky
+  - Editovatelná pole: Jméno, Příjmení, Email, Telefon, Datum narození, Stav
+  - Datum narození s výběrem kalendáře (HTML5 date picker)
+  - AJAX endpoint `/applicant/<id>/update_field` pro okamžité aktualizace
+- **Navigace mezi uchazeči**: Tlačítka "Předchozí" a "Následující" na detailní stránce
+  - Respektuje aktuální filtry a řazení
+  - Zachování kontextu při procházení seznamu
+- **Perzistence stránkování**: Tlačítko "Zpět na seznam" vrací na správnou stránku seznamu
+- **Upozornění na věk**: Přesunuté do oblasti upozornění v horní části detailní stránky
+- Testy pro inline úpravy polí (`test_update_applicant_field`, `test_update_applicant_field_invalid`, `test_update_applicant_dob`)
+
+### Změněno
+- **UI detailní stránky**: Seskupení navigačních tlačítek odděleně od akčních tlačítek
+- **Modální okno úprav**: Odstraněno ve prospěch inline úprav
+- Vrácena původní velikost členské karty (1024x585) pro lepší kvalitu
+- Vylepšená kvalita QR kódu pomocí `Image.LANCZOS` filtru
+- Optimalizace PNG výstupu členské karty (`optimize=True`)
+
+### Opraveno
+- Opravena chyba `sqlite3.ProgrammingError` při aktualizaci údajů uchazeče (duplicitní `conn.close()`)
+- Opravena chyba `NameError: name 'conn' is not defined` v index route
+- Opravena chyba `AssertionError: View function mapping is overwriting an existing endpoint function`
+- Přidán chybějící `{% block scripts %}` do `base.html` pro načítání JavaScriptu
+
+### Technické
+- Nový endpoint: `POST /applicant/<id>/update_field` pro AJAX aktualizace jednotlivých polí
+- Refaktoring: Extrahována funkce `get_filtered_applicants()` pro znovupoužitelnost
+- Konverze formátu data: DD.MM.YYYY ↔ YYYY-MM-DD pro HTML5 date picker
+- Rozšířené testy v `tests/test_web_app.py`
+
+---
+
 ## [1.1] - 2025-11-27
 
 ### Přidáno

@@ -105,11 +105,12 @@
         </thead>
         <tbody>
             {% for app in applicants %}
-            <tr
-                class="{% if app.age is none or (app.age and (app.age < 15 or app.age >= 25)) or app.suspect_parent_email or app.is_duplicate %}warning-row{% endif %}">
+            <tr class="{% if app.age is none or (app.age and (app.age < 15 or app.age >= 25)) or app.suspect_parent_email or app.is_duplicate %}warning-row{% endif %}"
+                style="cursor: pointer;"
+                onclick="window.location='{{ url_for('applicant_detail', id=app.id, **request.args) }}'">
                 <td><span class="badge">{{ app.membership_id }}</span></td>
                 <td><strong>{{ app.first_name }} {{ app.last_name }}</strong></td>
-                <td><a href="mailto:{{ app.email }}">{{ app.email }}</a></td>
+                <td onclick="event.stopPropagation()"><a href="mailto:{{ app.email }}">{{ app.email }}</a></td>
                 <td>{{ app.phone or '-' }}</td>
                 <td>
                     {% if app.age is not none %}
@@ -126,7 +127,7 @@
                     <span style="color: #999;">-</span>
                     {% endif %}
                 </td>
-                <td>
+                <td onclick="event.stopPropagation()">
                     <form action="{{ url_for('update_applicant_status', id=app.id) }}" method="POST" style="margin: 0;">
                         <select name="status" onchange="this.form.submit()"
                             class="status-select status-{{ app.status | slugify_status }}"
@@ -139,8 +140,9 @@
                         </select>
                     </form>
                 </td>
-                <td>
-                    <a href="{{ url_for('applicant_detail', id=app.id) }}" class="btn btn-primary btn-small">Detail</a>
+                <td onclick="event.stopPropagation()">
+                    <a href="{{ url_for('applicant_detail', id=app.id, **request.args) }}"
+                        class="btn btn-small btn-secondary">Detail</a>
                 </td>
             </tr>
             {% else %}

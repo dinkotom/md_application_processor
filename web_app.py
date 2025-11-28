@@ -35,7 +35,7 @@ from flask import session
 DB_PATH_TEST = 'applications_test.db'
 DB_PATH_PROD = 'applications.db'
 
-VERSION = "1.1"
+VERSION = "1.2"
 
 def init_db(db_path):
     """Initialize database with schema if it doesn't exist"""
@@ -200,21 +200,20 @@ def favicon():
     return send_from_directory(os.path.join(app.root_path, 'static'),
                                'favicon.png', mimetype='image/png')
 
-@app.route('/')
-def index():
-    """Main dashboard page"""
+def get_filtered_applicants(request_args):
+    """Helper to get filtered and sorted applicants based on request args"""
     conn = get_db_connection()
     
     # Get search and sort parameters
-    search = request.args.get('search', '')
-    filter_status = request.args.get('status', '')
-    filter_age_group = request.args.get('age_group', '')
-    filter_city = request.args.get('city', '')
-    filter_school = request.args.get('school', '')
-    filter_interest = request.args.get('interest', '')
-    filter_source = request.args.get('source', '')
-    sort_by = request.args.get('sort', 'id')  # Default sort by ID
-    sort_order = request.args.get('order', 'desc')  # Default descending
+    search = request_args.get('search', '')
+    filter_status = request_args.get('status', '')
+    filter_age_group = request_args.get('age_group', '')
+    filter_city = request_args.get('city', '')
+    filter_school = request_args.get('school', '')
+    filter_interest = request_args.get('interest', '')
+    filter_source = request_args.get('source', '')
+    sort_by = request_args.get('sort', 'id')  # Default sort by ID
+    sort_order = request_args.get('order', 'desc')  # Default descending
     
     # Build query
     query = "SELECT * FROM applicants WHERE deleted = 0 AND 1=1"
@@ -229,12 +228,6 @@ def index():
         query += " AND status = ?"
         params.append(filter_status)
 
-    # Note: We can't filter city in SQL because SQLite's LOWER() doesn't handle Czech characters (Í, Ř, etc.)
-    # We'll filter cities in Python after fetching
-
-    # Note: We'll also filter schools in Python to apply normalization
-    # This ensures filtering matches the grouping in stats
-
     if filter_source:
         query += " AND source = ?"
         params.append(filter_source)
@@ -243,16 +236,11 @@ def index():
         query += " AND interests LIKE ?"
         params.append(f"%{filter_interest}%")
 
-    # We need to fetch all to filter by age in python because age is calculated
-    # But for efficiency, if no age filter, we can paginate in SQL.
-    # However, since we calculate age on the fly, we can't easily filter by age in SQL unless we duplicate the logic or store DOB.
-    # We store DOB. SQLite doesn't have easy date diff functions that match our python logic perfectly without extensions.
-    # So we will fetch all matching other criteria, then filter by age in Python.
-    
     cursor = conn.execute(query, params)
     all_applicants = [dict(row) for row in cursor.fetchall()]
+    conn.close()
     
-    # Filter by city in Python (SQLite LOWER() doesn't handle Unicode properly)
+    # Filter by city in Python
     if filter_city:
         filtered_by_city = []
         for app in all_applicants:
@@ -260,7 +248,7 @@ def index():
                 filtered_by_city.append(app)
         all_applicants = filtered_by_city
     
-    # Filter by school in Python (to apply normalization that matches stats)
+    # Filter by school in Python
     if filter_school:
         filtered_by_school = []
         for app in all_applicants:
@@ -286,23 +274,11 @@ def index():
 
     # Sort by ID or application_received
     if sort_by == 'application_received':
-        # Sort by application_received, handling NULL values (put them last)
         all_applicants.sort(
             key=lambda x: (x.get('application_received') is None, x.get('application_received') or ''),
             reverse=(sort_order == 'desc')
         )
     else:  # Default to ID (membership_id)
-        def get_id_key(x):
-            try:
-                return int(x.get('membership_id', 0))
-            except (ValueError, TypeError):
-                # Handle non-numeric IDs (sort them at the end or beginning)
-                # For now, treat as 0 or use string sorting fallback?
-                # Let's try to return the string itself if possible, but we can't mix types in python 3 sort
-                # So let's return a tuple: (is_numeric, value)
-                return -1
-        
-        # Better approach: Sort by numeric value if possible, else by string
         all_applicants.sort(
             key=lambda x: (
                 0 if str(x.get('membership_id', '')).isdigit() else 1, 
@@ -310,6 +286,23 @@ def index():
             ), 
             reverse=(sort_order == 'desc')
         )
+    return all_applicants
+
+@app.route('/')
+def index():
+    """Main dashboard page"""
+    # Get filter parameters for template context
+    search = request.args.get('search', '')
+    filter_status = request.args.get('status', '')
+    filter_age_group = request.args.get('age_group', '')
+    filter_city = request.args.get('city', '')
+    filter_school = request.args.get('school', '')
+    filter_interest = request.args.get('interest', '')
+    filter_source = request.args.get('source', '')
+    sort_by = request.args.get('sort', 'id')
+    sort_order = request.args.get('order', 'desc')
+
+    all_applicants = get_filtered_applicants(request.args)
     
     # Pagination (in memory now since we might filter by age)
     page = request.args.get('page', 1, type=int)
@@ -355,8 +348,6 @@ def index():
         )
         
         final_applicants.append(app)
-    
-    conn.close()
     
     return render_template('index.html', 
                          applicants=final_applicants, 
@@ -540,7 +531,30 @@ def applicant_detail(id):
     )
     app_dict['duplicate_details'] = duplicates
     
-    return render_template('detail.html', applicant=app_dict)
+    # Pass query parameters for the back button
+    back_args = request.args.to_dict()
+    
+    # Find previous and next applicant IDs based on current filters/sort
+    # We need to get the full list of applicants with current filters
+    all_filtered = get_filtered_applicants(request.args)
+    
+    prev_id = None
+    next_id = None
+    
+    # Find current applicant index
+    current_index = -1
+    for i, app in enumerate(all_filtered):
+        if app['id'] == id:
+            current_index = i
+            break
+            
+    if current_index != -1:
+        if current_index > 0:
+            prev_id = all_filtered[current_index - 1]['id']
+        if current_index < len(all_filtered) - 1:
+            next_id = all_filtered[current_index + 1]['id']
+    
+    return render_template('detail.html', applicant=app_dict, back_args=back_args, prev_id=prev_id, next_id=next_id)
 
 @app.route('/applicant/<int:id>/card')
 def applicant_card(id):
@@ -711,8 +725,6 @@ def update_applicant(id):
     
     conn.commit()
     conn.close()
-    conn.commit()
-    conn.close()
     return redirect(url_for('index'))
 
 @app.route('/applicant/<int:id>/update_status', methods=['POST'])
@@ -729,6 +741,29 @@ def update_applicant_status(id):
     
     # Redirect back to the same page (index)
     return redirect(url_for('index'))
+
+@app.route('/applicant/<int:id>/update_field', methods=['POST'])
+def update_applicant_field(id):
+    """Update a single field of an applicant via AJAX"""
+    data = request.get_json()
+    field = data.get('field')
+    value = data.get('value')
+    
+    allowed_fields = ['first_name', 'last_name', 'email', 'phone', 'dob', 'status']
+    
+    if field not in allowed_fields:
+        return jsonify({'success': False, 'error': 'Invalid field'}), 400
+        
+    conn = get_db_connection()
+    try:
+        query = f'UPDATE applicants SET {field} = ? WHERE id = ?'
+        conn.execute(query, (value, id))
+        conn.commit()
+        return jsonify({'success': True})
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+    finally:
+        conn.close()
 
 @app.route('/applicant/<int:id>/dismiss_parent_warning', methods=['POST'])
 def dismiss_parent_warning(id):

@@ -5,339 +5,540 @@
 {% block content %}
 <div class="page-header">
     <h2>{{ applicant.first_name }} {{ applicant.last_name }}</h2>
-    <div class="actions">
-        {% if applicant.email_sent %}
-        <span style="color: var(--success-color); margin-right: 1rem;">
-            ✓ Email odeslán {{ applicant.email_sent_at[:16] if applicant.email_sent_at else '' }}
-        </span>
-        {% else %}
-        <button type="button" onclick="openEmailModal()" class="btn btn-success">Odeslat email s kartou</button>
-        {% endif %}
-        <button type="button" onclick="openDeleteModal()" class="btn btn-danger">Smazat</button>
-        <button type="button" onclick="openEditModal()" class="btn btn-secondary">Upravit</button>
-        <a href="{{ url_for('index') }}" class="btn btn-secondary">← Zpět na seznam</a>
+    <div class="actions" style="display: flex; gap: 2rem; align-items: center;">
+        <div style="display: flex; gap: 0.5rem;">
+            {% if applicant.email_sent %}
+            <span style="color: var(--success-color); margin-right: 1rem; display: flex; align-items: center;">
+                ✓ Email odeslán {{ applicant.email_sent_at[:16] if applicant.email_sent_at else '' }}
+            </span>
+            {% else %}
+            <button type="button" onclick="openEmailModal()" class="btn btn-success">Odeslat email s kartou</button>
+            {% endif %}
+            <button type="button" onclick="openDeleteModal()" class="btn btn-danger">Smazat</button>
+        </div>
+
+        <div style="display: flex; gap: 0.5rem; padding-left: 2rem; border-left: 2px solid var(--border-color);">
+            {% if prev_id %}
+            <a href="{{ url_for('applicant_detail', id=prev_id, **back_args) }}" class="btn btn-secondary">←
+                Předchozí</a>
+            {% endif %}
+            {% if next_id %}
+            <a href="{{ url_for('applicant_detail', id=next_id, **back_args) }}" class="btn btn-secondary">Následující
+                →</a>
+            {% endif %}
+            <a href="{{ url_for('index', **back_args) }}" class="btn btn-secondary">Zpět na seznam</a>
+        </div>
     </div>
 </div>
 
-
-{% if applicant.suspect_parent_email %}
-<div class="alert alert-warning"
-    style="margin-bottom: 1rem; background-color: #fff3cd; color: #856404; padding: 0.75rem 1.25rem; border: 1px solid #ffeeba; border-radius: 0.25rem; display: flex; justify-content: space-between; align-items: center;">
-    <span>⚠️ <strong>POZOR:</strong> Email neobsahuje jméno uchazeče - pravděpodobně email rodiče nebo jiné
-        osoby.</span>
-    <form action="{{ url_for('dismiss_parent_warning', id=applicant.id) }}" method="POST" style="margin: 0;">
-        <button type="submit" class="btn btn-small"
-            style="background: #856404; color: white; padding: 0.25rem 0.75rem; font-size: 0.85rem;">Skrýt</button>
-    </form>
-</div>
-{% endif %}
-
-{% if applicant.is_duplicate %}
-<div class="alert alert-warning"
-    style="margin-bottom: 1rem; background-color: #fff3cd; color: #856404; padding: 0.75rem 1.25rem; border: 1px solid #ffeeba; border-radius: 0.25rem; display: flex; justify-content: space-between; align-items: center;">
-    <span>
-        ⚠️ <strong>POZOR:</strong> Nalezen duplicitní kontakt v databázi
-        {% if applicant.duplicate_details.email_duplicate %}(shodný email){% endif %}
-        {% if applicant.duplicate_details.phone_duplicate %}(shodný telefon){% endif %}.
-        Pravděpodobně se jedná o opakovanou přihlášku.
-    </span>
-    <form action="{{ url_for('dismiss_duplicate_warning', id=applicant.id) }}" method="POST" style="margin: 0;">
-        <button type="submit" class="btn btn-small"
-            style="background: #856404; color: white; padding: 0.25rem 0.75rem; font-size: 0.85rem;">Skrýt</button>
-    </form>
-</div>
-{% endif %}
-
-<div class="detail-card full-width" style="margin-bottom: 2rem;">
-    <h3>Členský průkaz</h3>
-    <div style="text-align: center;">
-        <img src="{{ url_for('serve_card_preview', id=applicant.id) }}" alt="Náhled členského průkazu"
-            style="max-width: 500px; width: 100%; height: auto; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); cursor: pointer;"
-            onclick="window.open('{{ url_for('applicant_card', id=applicant.id) }}', '_blank')">
-        <p style="margin-top: 0.5rem; font-size: 0.9em; color: #666;">
-            <em>Klikněte na obrázek pro stažení v plné kvalitě</em>
-        </p>
-    </div>
-</div>
-
-<div class="detail-grid">
-    <div class="detail-card">
-        <h3>Základní informace</h3>
-        <dl>
-            <dt>Číslo karty:</dt>
-            <dd><span class="badge">{{ applicant.membership_id }}</span></dd>
-
-            <dt>Email:</dt>
-            <dd><a href="mailto:{{ applicant.email }}">{{ applicant.email }}</a></dd>
-
-            <dt>Telefon:</dt>
-            <dd>{{ applicant.phone }}</dd>
-
-            <dt>Datum narození:</dt>
-            <dd>{{ applicant.dob }}</dd>
-
-            <dt>Věk:</dt>
-            <dd>
-                {% if applicant.age is not none %}
-                <span class="age-badge {% if applicant.age < 15 or applicant.age >= 25 %}age-warning{% endif %}">
-                    {{ applicant.age }} let
-                    {% if applicant.age < 15 %}(⚠️ Pod 15 let){% endif %} {% if applicant.age>= 25 %}(⚠️ Nad 24 let){%
-                        endif %}
-                </span>
-                {% else %}
-                <span class="age-badge age-warning">N/A (⚠️ Neplatné datum narození)</span>
-                {% endif %}
-            </dd>
-
-            <dt>Stav:</dt>
-            <dd>
-                <span class="status-badge status-{{ applicant.status | slugify_status }}">
-                    {{ applicant.status or 'Nová' }}
-                </span>
-            </dd>
-        </dl>
-    </div>
-
-    <div class="detail-card">
-        <h3>Bydliště a škola</h3>
-        <dl>
-            <dt>Město:</dt>
-            <dd>{{ applicant.city or '-' }}</dd>
-
-            <dt>Škola:</dt>
-            <dd>{{ applicant.school or '-' }}</dd>
-        </dl>
-    </div>
-
-    <div class="detail-card">
-        <h3>Zájmy a preference</h3>
-        <dl>
-            <dt>Zájmy:</dt>
-            <dd>{{ applicant.interests or '-' }}</dd>
-
-            <dt>Povaha:</dt>
-            <dd>{{ applicant.character or '-' }}</dd>
-
-            <dt>Frekvence návštěv:</dt>
-            <dd>{{ applicant.frequency or '-' }}</dd>
-
-            <dt>Barva:</dt>
-            <dd>{{ applicant.color or '-' }}</dd>
-        </dl>
-    </div>
-
-    <div class="detail-card">
-        <h3>Zdroj informací</h3>
-        <dl>
-            <dt>Odkud o nás ví:</dt>
-            <dd>{{ applicant.source or '-' }}</dd>
-
-            <dt>Detail zdroje:</dt>
-            <dd>{{ applicant.source_detail or '-' }}</dd>
-        </dl>
-    </div>
-
-    {% if applicant.message %}
-    <div class="detail-card full-width">
-        <h3>Zpráva od uchazeče</h3>
-        <p>{{ applicant.message }}</p>
+{% if applicant.age is none or (applicant.age < 15 or applicant.age>= 25) %}
+    <div class="alert alert-warning"
+        style="margin-bottom: 1rem; background-color: #fff3cd; color: #856404; padding: 0.75rem 1.25rem; border: 1px solid #ffeeba; border-radius: 0.25rem;">
+        <span>
+            ⚠️ <strong>POZOR:</strong>
+            {% if applicant.age is none %}
+            Neplatné datum narození.
+            {% elif applicant.age < 15 %} Věk pod 15 let ({{ applicant.age }} let). {% else %} Věk nad 24 let ({{
+                applicant.age }} let). {% endif %} </span>
     </div>
     {% endif %}
 
-    <div class="detail-card full-width">
-        <h3>Newsletter</h3>
-        <p>{{ applicant.newsletter or 'Bez odpovědi' }}</p>
-    </div>
-
-    <div class="detail-card full-width">
-        <h3>Původní e-mail</h3>
-        <pre class="email-body">{{ applicant.full_body }}</pre>
-    </div>
-
-    <div class="detail-card full-width">
-        <h3>Metadata</h3>
-        <dl>
-            <dt>Přihláška přijata:</dt>
-            <dd>{{ applicant.application_received or 'Není k dispozici (CSV import)' }}</dd>
-
-            <dt>Datum vytvoření:</dt>
-            <dd>{{ applicant.created_at }}</dd>
-
-            <dt>ID v databázi:</dt>
-            <dd>{{ applicant.id }}</dd>
-        </dl>
-    </div>
-</div>
-
-<!-- Edit Modal -->
-<div id="editModal" class="modal-overlay">
-    <div class="modal">
-        <div class="modal-title">Upravit uchazeče</div>
-        <form id="editForm" action="{{ url_for('update_applicant', id=applicant.id) }}" method="POST">
-            <div class="form-group">
-                <label for="edit_first_name">Jméno</label>
-                <input type="text" id="edit_first_name" name="first_name" value="{{ applicant.first_name }}" required
-                    class="form-control">
-            </div>
-            <div class="form-group">
-                <label for="edit_last_name">Příjmení</label>
-                <input type="text" id="edit_last_name" name="last_name" value="{{ applicant.last_name }}" required
-                    class="form-control">
-            </div>
-            <div class="form-group">
-                <label for="edit_email">Email</label>
-                <input type="email" id="edit_email" name="email" value="{{ applicant.email }}" required
-                    class="form-control">
-            </div>
-            <div class="form-group">
-                <label for="edit_phone">Telefon</label>
-                <input type="text" id="edit_phone" name="phone" value="{{ applicant.phone }}" class="form-control">
-            </div>
-            <div class="form-group">
-                <label for="edit_dob">Datum narození</label>
-                <input type="text" id="edit_dob" name="dob" value="{{ applicant.dob }}" placeholder="DD.MM.YYYY"
-                    class="form-control">
-            </div>
-
-            <hr style="margin: 1.5rem 0; border: 0; border-top: 1px solid var(--border-color);">
-
-            <div class="form-group">
-                <label for="edit_status">Stav přihlášky</label>
-                <select id="edit_status" class="form-control" onchange="updateStatus(this.value)">
-                    <option value="Nová" {% if applicant.status=='Nová' %}selected{% endif %}>Nová</option>
-                    <option value="Zpracovává se" {% if applicant.status=='Zpracovává se' %}selected{% endif %}>
-                        Zpracovává se</option>
-                    <option value="Vyřízená" {% if applicant.status=='Vyřízená' %}selected{% endif %}>Vyřízená</option>
-                </select>
-                <input type="hidden" id="status_input" name="status" value="{{ applicant.status or 'Nová' }}">
-            </div>
-
-            <div class="modal-actions" style="margin-top: 1.5rem;">
-                <button type="button" onclick="closeEditModal()" class="btn btn-secondary">Zrušit</button>
-                <button type="submit" class="btn btn-primary">Uložit změny</button>
-            </div>
+    {% if applicant.suspect_parent_email %}
+    <div class="alert alert-warning"
+        style="margin-bottom: 1rem; background-color: #fff3cd; color: #856404; padding: 0.75rem 1.25rem; border: 1px solid #ffeeba; border-radius: 0.25rem; display: flex; justify-content: space-between; align-items: center;">
+        <span>⚠️ <strong>POZOR:</strong> Email neobsahuje jméno uchazeče - pravděpodobně email rodiče nebo jiné
+            osoby.</span>
+        <form action="{{ url_for('dismiss_parent_warning', id=applicant.id) }}" method="POST" style="margin: 0;">
+            <button type="submit" class="btn btn-small"
+                style="background: #856404; color: white; padding: 0.25rem 0.75rem; font-size: 0.85rem;">Skrýt</button>
         </form>
     </div>
-</div>
+    {% endif %}
 
-<!-- Delete Modal -->
-<div id="deleteModal" class="modal-overlay">
-    <div class="modal">
-        <div class="modal-title">Smazat uchazeče?</div>
-        <div class="modal-body">
-            <p>Opravdu chcete smazat uchazeče <strong>{{ applicant.first_name }} {{ applicant.last_name }}</strong>?</p>
-            <p style="color: #dc3545;">Tato akce je nevratná.</p>
-        </div>
-        <div class="modal-actions">
-            <button class="btn btn-secondary" onclick="closeDeleteModal()">Zrušit</button>
-            <form action="{{ url_for('delete_applicant', id=applicant.id) }}" method="POST" style="display: inline;">
-                <button type="submit" class="btn btn-danger">Smazat</button>
-            </form>
+    {% if applicant.is_duplicate %}
+    <div class="alert alert-warning"
+        style="margin-bottom: 1rem; background-color: #fff3cd; color: #856404; padding: 0.75rem 1.25rem; border: 1px solid #ffeeba; border-radius: 0.25rem; display: flex; justify-content: space-between; align-items: center;">
+        <span>
+            ⚠️ <strong>POZOR:</strong> Nalezen duplicitní kontakt v databázi
+            {% if applicant.duplicate_details.email_duplicate %}(shodný email){% endif %}
+            {% if applicant.duplicate_details.phone_duplicate %}(shodný telefon){% endif %}.
+            Pravděpodobně se jedná o opakovanou přihlášku.
+        </span>
+        <form action="{{ url_for('dismiss_duplicate_warning', id=applicant.id) }}" method="POST" style="margin: 0;">
+            <button type="submit" class="btn btn-small"
+                style="background: #856404; color: white; padding: 0.25rem 0.75rem; font-size: 0.85rem;">Skrýt</button>
+        </form>
+    </div>
+    {% endif %}
+
+    <div class="detail-card full-width" style="margin-bottom: 2rem;">
+        <h3>Členský průkaz</h3>
+        <div style="text-align: center;">
+            <img src="{{ url_for('serve_card_preview', id=applicant.id) }}" alt="Náhled členského průkazu"
+                style="max-width: 500px; width: 100%; height: auto; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); cursor: pointer;"
+                onclick="window.open('{{ url_for('applicant_card', id=applicant.id) }}', '_blank')">
+            <p style="margin-top: 0.5rem; font-size: 0.9em; color: #666;">
+                <em>Klikněte na obrázek pro stažení v plné kvalitě</em>
+            </p>
         </div>
     </div>
-</div>
 
-<!-- Email Preview Modal -->
-<div id="emailModal" class="modal-overlay">
-    <div class="modal" style="max-width: 600px;">
-        <div class="modal-title">📧 Náhled emailu</div>
-        <div class="modal-body">
-            <div id="emailPreviewContent">
-                <p>Načítání náhledu...</p>
+    <div class="detail-grid">
+        <div class="detail-card">
+            <h3>Základní informace</h3>
+            <dl>
+                <dt>Číslo karty:</dt>
+                <dd><span class="badge">{{ applicant.membership_id }}</span></dd>
+
+                <dt>Jméno:</dt>
+                <dd>
+                    <span id="display_first_name">{{ applicant.first_name }}</span>
+                    <span id="input_first_name" style="display: none;">
+                        <input type="text" value="{{ applicant.first_name }}"
+                            style="padding: 0.25rem 0.5rem; border: 1px solid var(--border-color); border-radius: 0.25rem;">
+                    </span>
+                    <button id="btn_edit_first_name" onclick="enableInlineEdit('first_name', 'first_name')"
+                        style="border: none; background: none; cursor: pointer; margin-left: 0.5rem; opacity: 0.6;"
+                        title="Upravit">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                            stroke-width="2">
+                            <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
+                            <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
+                        </svg>
+                    </button>
+                    <button id="btn_save_first_name" onclick="saveInlineEdit('first_name', 'first_name')"
+                        class="btn btn-small btn-success" style="display: none; margin-left: 0.5rem;">✓</button>
+                    <button id="btn_cancel_first_name" onclick="cancelInlineEdit('first_name')"
+                        class="btn btn-small btn-secondary" style="display: none; margin-left: 0.25rem;">✗</button>
+                </dd>
+
+                <dt>Příjmení:</dt>
+                <dd>
+                    <span id="display_last_name">{{ applicant.last_name }}</span>
+                    <span id="input_last_name" style="display: none;">
+                        <input type="text" value="{{ applicant.last_name }}"
+                            style="padding: 0.25rem 0.5rem; border: 1px solid var(--border-color); border-radius: 0.25rem;">
+                    </span>
+                    <button id="btn_edit_last_name" onclick="enableInlineEdit('last_name', 'last_name')"
+                        style="border: none; background: none; cursor: pointer; margin-left: 0.5rem; opacity: 0.6;"
+                        title="Upravit">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                            stroke-width="2">
+                            <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
+                            <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
+                        </svg>
+                    </button>
+                    <button id="btn_save_last_name" onclick="saveInlineEdit('last_name', 'last_name')"
+                        class="btn btn-small btn-success" style="display: none; margin-left: 0.5rem;">✓</button>
+                    <button id="btn_cancel_last_name" onclick="cancelInlineEdit('last_name')"
+                        class="btn btn-small btn-secondary" style="display: none; margin-left: 0.25rem;">✗</button>
+                </dd>
+
+                <dt>Email:</dt>
+                <dd>
+                    <span id="display_email"><a href="mailto:{{ applicant.email }}">{{ applicant.email }}</a></span>
+                    <span id="input_email" style="display: none;">
+                        <input type="email" value="{{ applicant.email }}"
+                            style="padding: 0.25rem 0.5rem; border: 1px solid var(--border-color); border-radius: 0.25rem; min-width: 200px;">
+                    </span>
+                    <button id="btn_edit_email" onclick="enableInlineEdit('email', 'email')"
+                        style="border: none; background: none; cursor: pointer; margin-left: 0.5rem; opacity: 0.6;"
+                        title="Upravit">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                            stroke-width="2">
+                            <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
+                            <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
+                        </svg>
+                    </button>
+                    <button id="btn_save_email" onclick="saveInlineEdit('email', 'email')"
+                        class="btn btn-small btn-success" style="display: none; margin-left: 0.5rem;">✓</button>
+                    <button id="btn_cancel_email" onclick="cancelInlineEdit('email')"
+                        class="btn btn-small btn-secondary" style="display: none; margin-left: 0.25rem;">✗</button>
+                </dd>
+
+                <dt>Telefon:</dt>
+                <dd>
+                    <span id="display_phone">{{ applicant.phone }}</span>
+                    <span id="input_phone" style="display: none;">
+                        <input type="text" value="{{ applicant.phone }}"
+                            style="padding: 0.25rem 0.5rem; border: 1px solid var(--border-color); border-radius: 0.25rem;">
+                    </span>
+                    <button id="btn_edit_phone" onclick="enableInlineEdit('phone', 'phone')"
+                        style="border: none; background: none; cursor: pointer; margin-left: 0.5rem; opacity: 0.6;"
+                        title="Upravit">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                            stroke-width="2">
+                            <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
+                            <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
+                        </svg>
+                    </button>
+                    <button id="btn_save_phone" onclick="saveInlineEdit('phone', 'phone')"
+                        class="btn btn-small btn-success" style="display: none; margin-left: 0.5rem;">✓</button>
+                    <button id="btn_cancel_phone" onclick="cancelInlineEdit('phone')"
+                        class="btn btn-small btn-secondary" style="display: none; margin-left: 0.25rem;">✗</button>
+                </dd>
+
+                <dt>Datum narození:</dt>
+                <dd>
+                    <span id="display_dob">{{ applicant.dob }}</span>
+                    <span id="input_dob" style="display: none;">
+                        <input type="date" id="dob_input" value=""
+                            style="padding: 0.25rem 0.5rem; border: 1px solid var(--border-color); border-radius: 0.25rem;">
+                    </span>
+                    <button id="btn_edit_dob" onclick="enableInlineEdit('dob', 'dob')"
+                        style="border: none; background: none; cursor: pointer; margin-left: 0.5rem; opacity: 0.6;"
+                        title="Upravit">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                            stroke-width="2">
+                            <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
+                            <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
+                        </svg>
+                    </button>
+                    <button id="btn_save_dob" onclick="saveInlineEditDOB()" class="btn btn-small btn-success"
+                        style="display: none; margin-left: 0.5rem;">✓</button>
+                    <button id="btn_cancel_dob" onclick="cancelInlineEdit('dob')" class="btn btn-small btn-secondary"
+                        style="display: none; margin-left: 0.25rem;">✗</button>
+                </dd>
+
+                <dt>Věk:</dt>
+                <dd>
+                    {% if applicant.age is not none %}
+                    <span class="age-badge {% if applicant.age < 15 or applicant.age >= 25 %}age-warning{% endif %}">
+                        {{ applicant.age }} let
+                    </span>
+                    {% else %}
+                    <span class="age-badge age-warning">N/A</span>
+                    {% endif %}
+                </dd>
+
+                <dt>Stav:</dt>
+                <dd>
+                    <span id="display_status">
+                        <span class="status-badge status-{{ applicant.status | slugify_status }}">
+                            {{ applicant.status or 'Nová' }}
+                        </span>
+                    </span>
+                    <span id="input_status" style="display: none;">
+                        <select
+                            style="padding: 0.25rem 0.5rem; border: 1px solid var(--border-color); border-radius: 0.25rem;">
+                            <option value="Nová" {% if applicant.status=='Nová' %}selected{% endif %}>Nová</option>
+                            <option value="Zpracovává se" {% if applicant.status=='Zpracovává se' %}selected{% endif %}>
+                                Zpracovává se</option>
+                            <option value="Vyřízená" {% if applicant.status=='Vyřízená' %}selected{% endif %}>Vyřízená
+                            </option>
+                        </select>
+                    </span>
+                    <button id="btn_edit_status" onclick="enableInlineEdit('status', 'status')"
+                        style="border: none; background: none; cursor: pointer; margin-left: 0.5rem; opacity: 0.6;"
+                        title="Upravit">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                            stroke-width="2">
+                            <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
+                            <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
+                        </svg>
+                    </button>
+                    <button id="btn_save_status" onclick="saveInlineEdit('status', 'status')"
+                        class="btn btn-small btn-success" style="display: none; margin-left: 0.5rem;">✓</button>
+                    <button id="btn_cancel_status" onclick="cancelInlineEdit('status')"
+                        class="btn btn-small btn-secondary" style="display: none; margin-left: 0.25rem;">✗</button>
+                </dd>
+            </dl>
+        </div>
+
+        <div class="detail-card">
+            <h3>Bydliště a škola</h3>
+            <dl>
+                <dt>Město:</dt>
+                <dd>{{ applicant.city or '-' }}</dd>
+
+                <dt>Škola:</dt>
+                <dd>{{ applicant.school or '-' }}</dd>
+            </dl>
+        </div>
+
+        <div class="detail-card">
+            <h3>Zájmy a preference</h3>
+            <dl>
+                <dt>Zájmy:</dt>
+                <dd>{{ applicant.interests or '-' }}</dd>
+
+                <dt>Povaha:</dt>
+                <dd>{{ applicant.character or '-' }}</dd>
+
+                <dt>Frekvence návštěv:</dt>
+                <dd>{{ applicant.frequency or '-' }}</dd>
+
+                <dt>Barva:</dt>
+                <dd>{{ applicant.color or '-' }}</dd>
+            </dl>
+        </div>
+
+        <div class="detail-card">
+            <h3>Zdroj informací</h3>
+            <dl>
+                <dt>Odkud o nás ví:</dt>
+                <dd>{{ applicant.source or '-' }}</dd>
+
+                <dt>Detail zdroje:</dt>
+                <dd>{{ applicant.source_detail or '-' }}</dd>
+            </dl>
+        </div>
+
+        {% if applicant.message %}
+        <div class="detail-card full-width">
+            <h3>Zpráva od uchazeče</h3>
+            <p>{{ applicant.message }}</p>
+        </div>
+        {% endif %}
+
+        <div class="detail-card full-width">
+            <h3>Newsletter</h3>
+            <p>{{ applicant.newsletter or 'Bez odpovědi' }}</p>
+        </div>
+
+        <div class="detail-card full-width">
+            <h3>Původní e-mail</h3>
+            <pre class="email-body">{{ applicant.full_body }}</pre>
+        </div>
+
+        <div class="detail-card full-width">
+            <h3>Metadata</h3>
+            <dl>
+                <dt>Přihláška přijata:</dt>
+                <dd>{{ applicant.application_received or 'Není k dispozici (CSV import)' }}</dd>
+
+                <dt>Datum vytvoření:</dt>
+                <dd>{{ applicant.created_at }}</dd>
+
+                <dt>ID v databázi:</dt>
+                <dd>{{ applicant.id }}</dd>
+            </dl>
+        </div>
+    </div>
+
+
+    <!-- Delete Modal -->
+    <div id="deleteModal" class="modal-overlay">
+        <div class="modal">
+            <div class="modal-title">Smazat uchazeče?</div>
+            <div class="modal-body">
+                <p>Opravdu chcete smazat uchazeče <strong>{{ applicant.first_name }} {{ applicant.last_name }}</strong>?
+                </p>
+                <p style="color: #dc3545;">Tato akce je nevratná.</p>
+            </div>
+            <div class="modal-actions">
+                <button class="btn btn-secondary" onclick="closeDeleteModal()">Zrušit</button>
+                <form action="{{ url_for('delete_applicant', id=applicant.id) }}" method="POST"
+                    style="display: inline;">
+                    <button type="submit" class="btn btn-danger">Smazat</button>
+                </form>
             </div>
         </div>
-        <div class="modal-actions">
-            <button class="btn btn-secondary" onclick="closeEmailModal()">Zrušit</button>
-            <button id="sendEmailBtn" class="btn btn-success" onclick="confirmSendEmail()">Odeslat email</button>
+    </div>
+
+    <!-- Email Preview Modal -->
+    <div id="emailModal" class="modal-overlay">
+        <div class="modal" style="max-width: 600px;">
+            <div class="modal-title">📧 Náhled emailu</div>
+            <div class="modal-body">
+                <div id="emailPreviewContent">
+                    <p>Načítání náhledu...</p>
+                </div>
+            </div>
+            <div class="modal-actions">
+                <button class="btn btn-secondary" onclick="closeEmailModal()">Zrušit</button>
+                <button id="sendEmailBtn" class="btn btn-success" onclick="confirmSendEmail()">Odeslat email</button>
+            </div>
         </div>
     </div>
-</div>
 
-<script>
-    function openEditModal() {
-        const modal = document.getElementById('editModal');
-        modal.style.display = 'flex';
-        modal.offsetHeight; // Trigger reflow
-        modal.classList.add('active');
-    }
+    {% endblock %}
 
-    function closeEditModal() {
-        const modal = document.getElementById('editModal');
-        modal.classList.remove('active');
-        setTimeout(() => {
-            modal.style.display = 'none';
-        }, 300);
-    }
+    {% block scripts %}
+    <script>
+        // Inline Editing Logic
+        function enableInlineEdit(elementId, fieldName) {
+            const displayEl = document.getElementById(`display_${elementId}`);
+            const inputEl = document.getElementById(`input_${elementId}`);
+            const editBtn = document.getElementById(`btn_edit_${elementId}`);
+            const saveBtn = document.getElementById(`btn_save_${elementId}`);
+            const cancelBtn = document.getElementById(`btn_cancel_${elementId}`);
 
-    function updateStatus(newStatus) {
-        document.getElementById('status_input').value = newStatus;
-    }
+            displayEl.style.display = 'none';
+            inputEl.style.display = 'inline-block';
+            editBtn.style.display = 'none';
+            saveBtn.style.display = 'inline-block';
+            cancelBtn.style.display = 'inline-block';
 
-    function openDeleteModal() {
-        const modal = document.getElementById('deleteModal');
-        modal.style.display = 'flex';
-        modal.offsetHeight; // Trigger reflow
-        modal.classList.add('active');
-    }
+            // Focus input
+            const input = inputEl.querySelector('input, select');
 
-    function closeDeleteModal() {
-        const modal = document.getElementById('deleteModal');
-        modal.classList.remove('active');
-        setTimeout(() => {
-            modal.style.display = 'none';
-        }, 300);
-    }
+            // Special handling for DOB - convert DD.MM.YYYY to YYYY-MM-DD
+            if (elementId === 'dob' && input) {
+                const dobText = displayEl.textContent.trim();
+                if (dobText && dobText.match(/^\d{2}\.\d{2}\.\d{4}$/)) {
+                    const [day, month, year] = dobText.split('.');
+                    input.value = `${year}-${month}-${day}`;
+                }
+            }
 
-    // Close modals on click outside
-    window.onclick = function (event) {
-        if (event.target.classList.contains('modal-overlay')) {
-            if (event.target.id === 'editModal') closeEditModal();
-            if (event.target.id === 'deleteModal') closeDeleteModal();
+            if (input) input.focus();
         }
-    }
 
-    // Close on Escape key
-    document.addEventListener('keydown', function (e) {
-        if (e.key === 'Escape') {
-            closeEditModal();
-            closeDeleteModal();
-            closeEmailModal();
+        function cancelInlineEdit(elementId) {
+            const displayEl = document.getElementById(`display_${elementId}`);
+            const inputEl = document.getElementById(`input_${elementId}`);
+            const editBtn = document.getElementById(`btn_edit_${elementId}`);
+            const saveBtn = document.getElementById(`btn_save_${elementId}`);
+            const cancelBtn = document.getElementById(`btn_cancel_${elementId}`);
+
+            displayEl.style.display = 'inline-block';
+            inputEl.style.display = 'none';
+            editBtn.style.display = 'inline-block';
+            saveBtn.style.display = 'none';
+            cancelBtn.style.display = 'none';
+
+            // Reset value
+            const input = inputEl.querySelector('input, select');
+            // We don't easily have the original value here unless we store it. 
+            // But since we didn't save, the page reload or just hiding input is fine.
+            // Ideally we should reset input.value to displayEl.innerText (trimmed)
         }
-    });
 
-    // Email Modal Functions
-    async function openEmailModal() {
-        const modal = document.getElementById('emailModal');
-        const previewContent = document.getElementById('emailPreviewContent');
+        async function saveInlineEdit(elementId, fieldName) {
+            const inputEl = document.getElementById(`input_${elementId}`);
+            const input = inputEl.querySelector('input, select');
+            const newValue = input.value;
 
-        // Show modal
-        modal.style.display = 'flex';
-        modal.offsetHeight;
-        modal.classList.add('active');
+            try {
+                const response = await fetch(`/applicant/{{ applicant.id }}/update_field`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        field: fieldName,
+                        value: newValue
+                    })
+                });
 
-        // Load preview
-        previewContent.innerHTML = '<p>Načítání náhledu...</p>';
+                const result = await response.json();
 
-        try {
-            const response = await fetch('/applicant/{{ applicant.id }}/email/preview', {
-                method: 'POST'
-            });
+                if (result.success) {
+                    // Reload to show updated data (and re-calculate things like age/status styles)
+                    window.location.reload();
+                } else {
+                    alert(`Error: ${result.error}`);
+                }
+            } catch (error) {
+                console.error('Error updating field:', error);
+                alert('Error updating field');
+            }
+        }
 
-            const data = await response.json();
+        async function saveInlineEditDOB() {
+            const inputEl = document.getElementById('input_dob');
+            const input = inputEl.querySelector('input');
+            const dateValue = input.value; // YYYY-MM-DD format
 
-            if (data.error) {
-                previewContent.innerHTML = `<p style="color: var(--danger-color);">Chyba: ${data.error}</p>`;
-                document.getElementById('sendEmailBtn').disabled = true;
+            if (!dateValue) {
+                alert('Prosím vyberte datum');
                 return;
             }
 
-            // Display preview
-            const testModeWarning = data.is_test_mode ?
-                `<div style="background: #fff3cd; padding: 0.75rem; border-radius: 4px; margin-bottom: 1rem; border-left: 4px solid #ffc107;">
+            // Convert YYYY-MM-DD to DD.MM.YYYY
+            const [year, month, day] = dateValue.split('-');
+            const formattedDate = `${day}.${month}.${year}`;
+
+            try {
+                const response = await fetch(`/applicant/{{ applicant.id }}/update_field`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        field: 'dob',
+                        value: formattedDate
+                    })
+                });
+
+                const result = await response.json();
+
+                if (result.success) {
+                    window.location.reload();
+                } else {
+                    alert(`Error: ${result.error}`);
+                }
+            } catch (error) {
+                console.error('Error updating field:', error);
+                alert('Error updating field');
+            }
+        }
+
+        function openDeleteModal() {
+            const modal = document.getElementById('deleteModal');
+            modal.style.display = 'flex';
+            modal.offsetHeight; // Trigger reflow
+            modal.classList.add('active');
+        }
+
+        function closeDeleteModal() {
+            const modal = document.getElementById('deleteModal');
+            modal.classList.remove('active');
+            setTimeout(() => {
+                modal.style.display = 'none';
+            }, 300);
+        }
+
+        // Close modals on click outside
+        window.onclick = function (event) {
+            if (event.target.classList.contains('modal-overlay')) {
+                if (event.target.id === 'deleteModal') closeDeleteModal();
+                if (event.target.id === 'emailModal') closeEmailModal();
+            }
+        }
+
+        // Close on Escape key
+        document.addEventListener('keydown', function (e) {
+            if (e.key === 'Escape') {
+                closeDeleteModal();
+                closeEmailModal();
+            }
+        });
+
+        // Email Modal Functions
+        async function openEmailModal() {
+            const modal = document.getElementById('emailModal');
+            const previewContent = document.getElementById('emailPreviewContent');
+
+            // Show modal
+            modal.style.display = 'flex';
+            modal.offsetHeight;
+            modal.classList.add('active');
+
+            // Load preview
+            previewContent.innerHTML = '<p>Načítání náhledu...</p>';
+
+            try {
+                const response = await fetch('/applicant/{{ applicant.id }}/email/preview', {
+                    method: 'POST'
+                });
+
+                const data = await response.json();
+
+                if (data.error) {
+                    previewContent.innerHTML = `<p style="color: var(--danger-color);">Chyba: ${data.error}</p>`;
+                    document.getElementById('sendEmailBtn').disabled = true;
+                    return;
+                }
+
+                // Display preview
+                const testModeWarning = data.is_test_mode ?
+                    `<div style="background: #fff3cd; padding: 0.75rem; border-radius: 4px; margin-bottom: 1rem; border-left: 4px solid #ffc107;">
                     <strong>⚠️ TESTOVACÍ REŽIM:</strong> Email bude odeslán na <code>${data.recipient}</code> místo emailu uchazeče.
                 </div>` : '';
 
-            previewContent.innerHTML = `
+                previewContent.innerHTML = `
                 ${testModeWarning}
                 <div style="margin-bottom: 1rem;">
                     <strong>Komu:</strong> ${data.recipient}
@@ -354,53 +555,53 @@
                 </div>
             `;
 
-            document.getElementById('sendEmailBtn').disabled = false;
+                document.getElementById('sendEmailBtn').disabled = false;
 
-        } catch (error) {
-            console.error('Error loading preview:', error);
-            previewContent.innerHTML = '<p style="color: var(--danger-color);">Chyba při načítání náhledu</p>';
-            document.getElementById('sendEmailBtn').disabled = true;
+            } catch (error) {
+                console.error('Error loading preview:', error);
+                previewContent.innerHTML = '<p style="color: var(--danger-color);">Chyba při načítání náhledu</p>';
+                document.getElementById('sendEmailBtn').disabled = true;
+            }
         }
-    }
 
-    function closeEmailModal() {
-        const modal = document.getElementById('emailModal');
-        modal.classList.remove('active');
-        setTimeout(() => {
-            modal.style.display = 'none';
-        }, 300);
-    }
+        function closeEmailModal() {
+            const modal = document.getElementById('emailModal');
+            modal.classList.remove('active');
+            setTimeout(() => {
+                modal.style.display = 'none';
+            }, 300);
+        }
 
-    async function confirmSendEmail() {
-        const btn = document.getElementById('sendEmailBtn');
-        const originalText = btn.textContent;
+        async function confirmSendEmail() {
+            const btn = document.getElementById('sendEmailBtn');
+            const originalText = btn.textContent;
 
-        btn.disabled = true;
-        btn.textContent = 'Odesílání...';
+            btn.disabled = true;
+            btn.textContent = 'Odesílání...';
 
-        try {
-            const response = await fetch('/applicant/{{ applicant.id }}/email/send', {
-                method: 'POST'
-            });
+            try {
+                const response = await fetch('/applicant/{{ applicant.id }}/email/send', {
+                    method: 'POST'
+                });
 
-            const result = await response.json();
+                const result = await response.json();
 
-            if (result.success) {
-                alert(`✓ ${result.message}`);
-                closeEmailModal();
-                // Reload page to show updated status
-                window.location.reload();
-            } else {
-                alert(`✗ Error: ${result.message || result.error}`);
+                if (result.success) {
+                    alert(`✓ ${result.message}`);
+                    closeEmailModal();
+                    // Reload page to show updated status
+                    window.location.reload();
+                } else {
+                    alert(`✗ Error: ${result.message || result.error}`);
+                    btn.disabled = false;
+                    btn.textContent = originalText;
+                }
+            } catch (error) {
+                console.error('Error sending email:', error);
+                alert('✗ Chyba při odesílání emailu');
                 btn.disabled = false;
                 btn.textContent = originalText;
             }
-        } catch (error) {
-            console.error('Error sending email:', error);
-            alert('✗ Chyba při odesílání emailu');
-            btn.disabled = false;
-            btn.textContent = originalText;
         }
-    }
-</script>
-{% endblock %}
+    </script>
+    {% endblock %}

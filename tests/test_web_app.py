@@ -124,5 +124,67 @@ class TestWebApp(unittest.TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.mimetype, 'image/png')
 
+    def test_update_applicant_field(self):
+        """Test updating a single applicant field via AJAX"""
+        import json
+        
+        # Test updating first name
+        response = self.client.post('/applicant/1/update_field',
+            data=json.dumps({
+                'field': 'first_name',
+                'value': 'Updated Name'
+            }),
+            content_type='application/json'
+        )
+        
+        self.assertEqual(response.status_code, 200)
+        data = json.loads(response.data)
+        self.assertTrue(data['success'])
+        
+        # Verify change in DB
+        conn = sqlite3.connect(self.db_path)
+        first_name = conn.execute('SELECT first_name FROM applicants WHERE id = 1').fetchone()[0]
+        conn.close()
+        self.assertEqual(first_name, 'Updated Name')
+    
+    def test_update_applicant_field_invalid(self):
+        """Test updating an invalid field returns error"""
+        import json
+        
+        response = self.client.post('/applicant/1/update_field',
+            data=json.dumps({
+                'field': 'invalid_field',
+                'value': 'test'
+            }),
+            content_type='application/json'
+        )
+        
+        self.assertEqual(response.status_code, 400)
+        data = json.loads(response.data)
+        self.assertFalse(data['success'])
+        self.assertIn('Invalid field', data['error'])
+    
+    def test_update_applicant_dob(self):
+        """Test updating date of birth field"""
+        import json
+        
+        response = self.client.post('/applicant/1/update_field',
+            data=json.dumps({
+                'field': 'dob',
+                'value': '15.03.2005'
+            }),
+            content_type='application/json'
+        )
+        
+        self.assertEqual(response.status_code, 200)
+        data = json.loads(response.data)
+        self.assertTrue(data['success'])
+        
+        # Verify change in DB
+        conn = sqlite3.connect(self.db_path)
+        dob = conn.execute('SELECT dob FROM applicants WHERE id = 1').fetchone()[0]
+        conn.close()
+        self.assertEqual(dob, '15.03.2005')
+
 if __name__ == '__main__':
     unittest.main()
