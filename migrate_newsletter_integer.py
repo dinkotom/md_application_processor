@@ -100,11 +100,15 @@ def migrate_newsletter_to_integer(db_path):
             if col == 'newsletter':
                 # Convert newsletter to INTEGER
                 # Handle various formats: 'yes', 'no', empty, NULL, 0, 1, text
+                # IMPORTANT: Trim ALL whitespace (spaces, tabs, newlines) before checking
                 select_columns.append('''
                     CASE 
-                        WHEN newsletter IS NULL OR newsletter = '' OR LOWER(newsletter) = 'yes' THEN 1
-                        WHEN newsletter = '0' OR newsletter = 0 OR LOWER(newsletter) = 'no' THEN 0
-                        WHEN newsletter = '1' OR newsletter = 1 THEN 1
+                        WHEN newsletter IS NULL THEN 1
+                        WHEN TRIM(REPLACE(REPLACE(REPLACE(newsletter, char(9), ''), char(10), ''), char(13), '')) = '' THEN 1
+                        WHEN LOWER(TRIM(newsletter)) = 'yes' THEN 1
+                        WHEN TRIM(newsletter) = '0' OR newsletter = 0 THEN 0
+                        WHEN LOWER(TRIM(newsletter)) = 'no' THEN 0
+                        WHEN TRIM(newsletter) = '1' OR newsletter = 1 THEN 1
                         ELSE 0
                     END as newsletter
                 ''')
