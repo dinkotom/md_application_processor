@@ -1413,10 +1413,18 @@ def bulk_export_to_ecomail():
                 # Prepare subscriber data
                 tags = []
                 if app['interests']:
+                    # Split by comma and strip whitespace
                     interest_tags = [i.strip() for i in app['interests'].split(',')]
+                    # Ensure no commas remain in individual tags (replace with hyphen if any)
+                    interest_tags = [t.replace(',', ' -') for t in interest_tags if t]
                     tags.extend(interest_tags)
                 if app['source']:
-                    tags.append(f"Zdroj: {app['source']}")
+                    # Replace comma with hyphen in source tag
+                    source_val = app['source'].replace(',', ' -')
+                    tags.append(f"Zdroj: {source_val}")
+                
+                # Final safety check: remove any remaining commas from all tags
+                tags = [t.replace(',', ' -') for t in tags]
                 
                 subscriber_data = {
                     'email': app['email'],
