@@ -1,0 +1,98 @@
+{% extends "base.html" %}
+
+{% block title %}Exporty - Mladý divák{% endblock %}
+
+{% block content %}
+<div class="stats-header">
+    <h2>📦 Exporty</h2>
+    <p class="subtitle">Export přihlášek do různých formátů</p>
+</div>
+
+<div class="stats-grid">
+    <!-- CSV Export Section -->
+    <div class="stat-card">
+        <h3>📄 Export do CSV</h3>
+        <p style="color: #666; margin-bottom: 1.5rem;">Exportujte přihlášky do CSV souboru pro další zpracování.</p>
+
+        <div style="margin-bottom: 1rem;">
+            <label style="display: block; margin-bottom: 0.5rem; font-weight: 500;">Filtrovat podle statusu:</label>
+            <select id="exportStatus" style="width: 100%; padding: 0.5rem; border: 1px solid #ddd; border-radius: 4px;">
+                <option value="">Všechny přihlášky</option>
+                <option value="Nová">Nová</option>
+                <option value="Schválená">Schválená</option>
+                <option value="Zamítnutá">Zamítnutá</option>
+                <option value="Náhradník">Náhradník</option>
+            </select>
+        </div>
+
+        <button onclick="exportToCSV()" class="btn btn-primary" style="width: 100%;">
+            💾 Stáhnout CSV
+        </button>
+    </div>
+
+    <!-- Ecomail Export Section -->
+    <div class="stat-card">
+        <h3>📧 Hromadný export do Ecomail</h3>
+        <p style="color: #666; margin-bottom: 1.5rem;">Exportujte více uchazečů najednou do Ecomailu.</p>
+
+        <div style="background: #f8f9fa; padding: 1rem; border-radius: 4px; margin-bottom: 1rem;">
+            <p style="margin: 0; color: #666; font-size: 0.9em;">
+                ℹ️ Tato funkce je momentálně ve vývoji. Pro export jednotlivých uchazečů použijte tlačítko na detailní
+                stránce.
+            </p>
+        </div>
+
+        <button class="btn btn-secondary" style="width: 100%;" disabled>
+            📤 Hromadný export (brzy)
+        </button>
+    </div>
+</div>
+
+<style>
+    .stats-header {
+        margin-bottom: 2rem;
+    }
+
+    .stats-header h2 {
+        margin: 0 0 0.5rem 0;
+        color: #333;
+    }
+
+    .subtitle {
+        color: #666;
+        margin: 0;
+    }
+
+    .stats-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+        gap: 1.5rem;
+        margin-top: 2rem;
+    }
+
+    .stat-card {
+        background: white;
+        padding: 1.5rem;
+        border-radius: 8px;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    }
+
+    .stat-card h3 {
+        margin: 0 0 1rem 0;
+        color: #333;
+        font-size: 1.2em;
+    }
+</style>
+
+<script>
+    function exportToCSV() {
+        const status = document.getElementById('exportStatus').value;
+        let url = '/export/csv';
+        if (status) {
+            url += `?status=${encodeURIComponent(status)}`;
+        }
+        window.location.href = url;
+    }
+</script>
+
+{% endblock %}

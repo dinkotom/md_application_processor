@@ -757,6 +757,14 @@ def stats():
                          interests=sorted(interests_count.items(), key=lambda x: x[1], reverse=True)[:10],
                          sources=sorted(sources.items(), key=lambda x: x[1], reverse=True))
 
+
+@app.route('/exports')
+def exports():
+    """Exports page for CSV and other export functions"""
+    return render_template('exports.html', 
+                         version=VERSION, 
+                         current_mode=session.get('mode', 'test'))
+
 @app.route('/advanced')
 def advanced():
     """Advanced settings page"""
@@ -1269,6 +1277,74 @@ def get_changelog():
     changelog_html = markdown.markdown(changelog_md, extensions=['fenced_code', 'tables'])
     
     return jsonify({'content': changelog_html})
+
+@app.route('/export/csv')
+def export_csv():
+    """Export applicants to CSV file"""
+    import csv
+    import io
+    from flask import make_response
+    
+    # Get status filter from query params
+    status_filter = request.args.get('status', '')
+    
+    # Get all applicants from database
+    conn = sqlite3.connect(get_db_path())
+    conn.row_factory = sqlite3.Row
+    cursor = conn.cursor()
+    
+    if status_filter:
+        cursor.execute('SELECT * FROM applicants WHERE deleted = 0 AND status = ? ORDER BY id DESC', (status_filter,))
+    else:
+        cursor.execute('SELECT * FROM applicants WHERE deleted = 0 ORDER BY id DESC')
+    
+    applicants = cursor.fetchall()
+    conn.close()
+    
+    # Create CSV in memory
+    output = io.StringIO()
+    writer = csv.writer(output)
+    
+    # Write header
+    writer.writerow([
+        'ID', 'Jméno', 'Příjmení', 'Email', 'Telefon', 'Datum narození',
+        'Členské číslo', 'Město', 'Škola', 'Zájmy', 'Povaha', 'Frekvence',
+        'Zdroj', 'Detail zdroje', 'Vzkaz', 'Barva', 'Newsletter', 'Status',
+        'Vytvořeno', 'Přihláška přijata'
+    ])
+    
+    # Write data rows
+    for app in applicants:
+        writer.writerow([
+            app['id'],
+            app['first_name'],
+            app['last_name'],
+            app['email'],
+            app['phone'],
+            app['dob'],
+            app['membership_id'],
+            app['city'],
+            app['school'],
+            app['interests'],
+            app['character'],
+            app['frequency'],
+            app['source'],
+            app['source_detail'],
+            app['message'],
+            app['color'],
+            'Ano' if app['newsletter'] == 1 else 'Ne',
+            app['status'],
+            app['created_at'],
+            app.get('application_received', '')
+        ])
+    
+    # Create response
+    output.seek(0)
+    response = make_response(output.getvalue())
+    response.headers['Content-Disposition'] = f'attachment; filename=prihlasky_{status_filter if status_filter else "vsechny"}.csv'
+    response.headers['Content-Type'] = 'text/csv; charset=utf-8'
+    
+    return response
 
 if __name__ == '__main__':
     # Initialize databases
