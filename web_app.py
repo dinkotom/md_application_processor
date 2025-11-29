@@ -593,7 +593,8 @@ def applicant_detail(id):
         if current_index < len(all_filtered) - 1:
             next_id = all_filtered[current_index + 1]['id']
     
-    return render_template('detail.html', applicant=app_dict, back_args=back_args, prev_id=prev_id, next_id=next_id)
+    current_mode = session.get('mode', 'test')
+    return render_template('detail.html', applicant=app_dict, back_args=back_args, prev_id=prev_id, next_id=next_id, current_mode=current_mode)
 
 @app.route('/applicant/<int:id>/card')
 def applicant_card(id):

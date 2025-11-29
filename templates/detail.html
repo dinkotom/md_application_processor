@@ -81,9 +81,10 @@
         const originalText = btn.innerHTML;
         isEcomailUpdate = originalText.includes('Aktualizovat');
 
+        const listName = '{{ current_mode }}' === 'test' ? 'TEST (ID 16)' : 'PRODUCTION (ID 17)';
         const confirmMsg = isEcomailUpdate
-            ? 'Opravdu chcete aktualizovat tohoto uchazeče v Ecomailu (seznam TEST)?'
-            : 'Opravdu chcete exportovat tohoto uchazeče do Ecomailu (seznam TEST)?';
+            ? `Opravdu chcete aktualizovat tohoto uchazeče v Ecomailu (seznam ${listName})?`
+            : `Opravdu chcete exportovat tohoto uchazeče do Ecomailu (seznam ${listName})?`;
 
         document.getElementById('ecomailConfirmMsg').textContent = confirmMsg;
 
