@@ -53,6 +53,12 @@ def parse_email_body(body: str) -> Dict[str, str]:
         else:
             data[key] = ""
 
+    # Convert newsletter to Boolean
+    # If "Nesouhlas se zasíláním novinek:" is empty, newsletter is TRUE
+    # If it contains text, newsletter is FALSE
+    newsletter_text = data.get('newsletter', '').strip()
+    data['newsletter'] = 1 if not newsletter_text else 0
+
     # Store the full body for the document
     data['full_body'] = body
     
@@ -68,6 +74,20 @@ def parse_csv_row(row: Dict[str, str]) -> Dict[str, str]:
     Returns:
         A dictionary containing mapped fields.
     """
+    # Get newsletter value and convert to Boolean
+    # If field is empty, newsletter is TRUE (1)
+    # If it contains text (disagreement), newsletter is FALSE (0)
+    # Check multiple possible header names
+    newsletter_text = (
+        row.get('marketingovy_nesouhlas') or 
+        row.get('marketingový nesouhlas') or 
+        row.get('Marketingový nesouhlas') or 
+        row.get('souhlas') or 
+        ''
+    ).strip()
+    
+    newsletter_value = 1 if not newsletter_text else 0
+    
     return {
         'first_name': row.get('jmeno', '').strip(),
         'last_name': row.get('prijmeni', '').strip(),
@@ -84,7 +104,7 @@ def parse_csv_row(row: Dict[str, str]) -> Dict[str, str]:
         'source_detail': row.get('kde', '').strip(),
         'message': row.get('volne_sdeleni', '').strip(),
         'color': row.get('barvy', '').strip(),
-        'newsletter': row.get('souhlas', '').strip(),
+        'newsletter': newsletter_value,
         'full_body': ''  # CSV imports don't have email body
     }
 

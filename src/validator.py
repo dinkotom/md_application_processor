@@ -25,7 +25,7 @@ def init_db(db_path: str = DB_PATH):
             source_detail TEXT,
             message TEXT,
             color TEXT,
-            newsletter TEXT,
+            newsletter INTEGER NOT NULL DEFAULT 1,
             full_body TEXT,
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             application_received TIMESTAMP,
@@ -165,7 +165,7 @@ def record_applicant(data: dict, db_path: str = DB_PATH):
     source_detail = data.get('source_detail', '').strip()
     message = data.get('message', '').strip()
     color = data.get('color', '').strip()
-    newsletter = data.get('newsletter', '').strip()
+    newsletter = data.get('newsletter', 0)  # Now an integer (0 or 1)
     full_body = data.get('full_body', '').strip()
     application_received = data.get('application_received')  # Can be None for CSV imports
     

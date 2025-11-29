@@ -296,13 +296,14 @@ class EcomailClient:
                 'error': str(e)
             }
 
-    def create_subscriber(self, list_id: int, subscriber_data: Dict) -> Dict:
+    def create_subscriber(self, list_id: int, subscriber_data: Dict, newsletter_status: int = 1) -> Dict:
         """
         Create or update a subscriber in a specific list
         
         Args:
             list_id: ID of the contact list
             subscriber_data: Dictionary containing subscriber details
+            newsletter_status: 1 for subscribed, 0 for unsubscribed (default: 1)
             
         Returns:
             Dict containing operation result
@@ -317,16 +318,31 @@ class EcomailClient:
                     'error': 'Email is required'
                 }
             
+            # Check if subscriber exists first
+            existing_subscriber = self.get_subscriber(subscriber_data['email'])
+            is_update = existing_subscriber.get('success') and existing_subscriber.get('data')
             
             # Extract tags if present (they go at the top level, not in subscriber_data)
             tags = subscriber_data.pop('tags', [])
             
+            # Base payload
             payload = {
                 'subscriber_data': subscriber_data,
                 'trigger_autoresponders': True,
                 'update_existing': True,
-                'resubscribe': True
+                'resubscribe': False  # Default to False to preserve status on update
             }
+            
+            if not is_update:
+                # New subscriber: set status based on newsletter consent
+                # 1 = subscribed, 2 = unsubscribed
+                status_code = 1 if newsletter_status == 1 else 2
+                subscriber_data['status'] = status_code
+                
+                # If we want them subscribed, we can also set resubscribe=True just in case,
+                # but setting status explicitly is better.
+                if status_code == 1:
+                    payload['resubscribe'] = True
             
             # Add tags at the top level if present
             if tags:

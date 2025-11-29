@@ -61,7 +61,7 @@ def init_db(db_path):
             source_detail TEXT,
             message TEXT,
             color TEXT,
-            newsletter TEXT,
+            newsletter INTEGER NOT NULL DEFAULT 1,
             full_body TEXT,
             status TEXT DEFAULT 'Nová',
             deleted INTEGER DEFAULT 0,
@@ -961,7 +961,9 @@ def export_applicant_to_ecomail(id):
         logger.info(f"Exporting to Ecomail. City: '{app_data.get('city', '')}', DOB: '{app_data.get('dob', '')}', Tags: {subscriber_data['tags']}")
         logger.debug(f"Full subscriber data: {subscriber_data}")
         
-        result = client.create_subscriber(list_id, subscriber_data)
+        # Pass newsletter status (1=subscribed, 0=unsubscribed)
+        newsletter_status = app_data.get('newsletter', 1)
+        result = client.create_subscriber(list_id, subscriber_data, newsletter_status=newsletter_status)
         
         if result['success']:
             # Update database status

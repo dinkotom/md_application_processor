@@ -28,9 +28,21 @@
   - Tagy na nejvyšší úrovni API požadavku (mimo subscriber_data)
   - Odstranění nadbytečných vlastních polí (ponecháno pouze CLENSKE_CISLO)
   - Město jako standardní pole místo vlastního pole
+- **Newsletter Logic:**
+    - Converted `newsletter` field to Boolean (INTEGER 0/1) in database.
+    - Updated parsers (Email & CSV) to correctly interpret consent:
+        - Email: Checks `Nesouhlas se zasíláním novinek` (Empty = 1, Text = 0).
+        - CSV: Checks `marketingovy_nesouhlas` (Empty = 1, Text = 0).
+    - Updated Ecomail integration to respect subscription status:
+        - New subscribers: `status=1` (Subscribed) if newsletter=1, `status=2` (Unsubscribed) if newsletter=0.
+        - Existing subscribers: Status is preserved (`resubscribe=False`).
+    - UI now displays "Ano"/"Ne" for newsletter consent.
+- **Database:**
+    - Added migration `migrate_newsletter_integer.py` to convert legacy text data to integer.
+    - Updated schema to enforce `INTEGER NOT NULL DEFAULT 1` for newsletter.
 
 ### Opraveno
-- **Ecomail export**: Opravena chyba 404 při exportu uchazečů
+- **Ecomail export**: Opravena chyba 404 při exportu
   - Přidána chybějící route `/applicant/<id>/export_to_ecomail`
   - Implementována metoda `create_subscriber` v EcomailClient
 - **Vyhledávání odběratelů**: Přidána chybějící route `/ecomail/subscriber`

@@ -477,7 +477,7 @@
 
         <div class="detail-card full-width">
             <h3>Newsletter</h3>
-            <p>{{ applicant.newsletter or 'Bez odpovědi' }}</p>
+            <p>{{ 'Ano' if applicant.newsletter == 1 else 'Ne' }}</p>
         </div>
 
         <div class="detail-card full-width">
