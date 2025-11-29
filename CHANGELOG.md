@@ -1,3 +1,59 @@
+## [1.4] - 2025-11-29
+
+### Přidáno
+- **Integrace Ecomail API**: Plná integrace s Ecomail pro správu kontaktů
+  - Export uchazečů do Ecomail s automatickým vytvořením/aktualizací odběratelů
+  - Vyhledávání odběratelů podle emailové adresy v sekci Pokročilé
+  - Automatická detekce a výběr kontaktního seznamu (preferuje seznam "TEST")
+  - Podpora standardních polí: email, jméno, příjmení, telefon, město, datum narození
+  - Export tagů z zájmů, povahy a barvy
+  - Export členského čísla jako vlastního pole (CLENSKE_CISLO)
+- **Poznámky k uchazečům**: Možnost přidávat poznámky k jednotlivým uchazečům
+  - Automatické ukládání poznámek při opuštění textového pole
+  - Indikátory stavu ukládání (Ukládání..., ✓ Uloženo, ✗ Chyba)
+  - Podpora poznámek ze seznamu i detailní stránky
+- **Vlastní modální okna**: Nahrazení nativních dialogů vlastními modály
+  - Potvrzení exportu do Ecomailu
+  - Úspěšný export do Ecomailu
+  - Konzistentní design napříč aplikací
+
+### Změněno
+- **UI detailní stránky**: Vylepšené rozložení tlačítek
+  - Menší tlačítka (btn-small) pro kompaktnější vzhled
+  - Vizuální oddělení navigačních tlačítek od akčních tlačítek
+  - Zjednodušená navigace: "←" a "→" místo "Předchozí" a "Následující"
+  - Responzivní layout s horizontálním oddělovačem na mobilních zařízeních
+- **Ecomail export**: Optimalizovaná struktura dat
+  - Konverze data narození z DD/MM/YYYY na YYYY-MM-DD formát
+  - Tagy na nejvyšší úrovni API požadavku (mimo subscriber_data)
+  - Odstranění nadbytečných vlastních polí (ponecháno pouze CLENSKE_CISLO)
+  - Město jako standardní pole místo vlastního pole
+
+### Opraveno
+- **Ecomail export**: Opravena chyba 404 při exportu uchazečů
+  - Přidána chybějící route `/applicant/<id>/export_to_ecomail`
+  - Implementována metoda `create_subscriber` v EcomailClient
+- **Vyhledávání odběratelů**: Přidána chybějící route `/ecomail/subscriber`
+- **Export města**: Opraveno odesílání pole město do Ecomailu
+- **Export data narození**: Správná konverze formátu data pro Ecomail API
+- **Export tagů**: Tagy nyní správně exportovány na nejvyšší úrovni požadavku
+
+### Technické
+- Nový modul: `src/ecomail.py` s třídou `EcomailClient`
+  - Metody: `get_lists()`, `get_subscriber()`, `create_subscriber()`
+  - Podpora pro vytváření a správu kontaktních seznamů
+- Nové routy:
+  - `POST /applicant/<id>/export_to_ecomail` - export uchazeče do Ecomailu
+  - `POST /ecomail/subscriber` - vyhledávání odběratele
+  - `POST /applicant/<id>/update_note` - aktualizace poznámky
+- Databázové změny:
+  - Přidán sloupec `note` (TEXT) do tabulky applicants
+  - Přidán sloupec `exported_to_ecomail` (INTEGER) do tabulky applicants
+  - Přidán sloupec `exported_at` (TIMESTAMP) do tabulky applicants
+- Vylepšené logování pro ladění Ecomail exportu
+
+---
+
 ## [1.2] - 2025-11-28
 
 ### Přidáno

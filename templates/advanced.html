@@ -151,6 +151,115 @@
     </form>
 </div>
 
+<!-- Ecomail Integration Section -->
+<div class="settings-section" style="margin-top: 2rem;">
+    <h3>📧 Integrace Ecomail</h3>
+    <p class="subtitle">
+        Správa kontaktních seznamů a vyhledávání odběratelů
+    </p>
+
+    {% if ecomail_error %}
+    <div
+        style="background: rgba(220, 53, 69, 0.1); border-left: 4px solid #dc3545; padding: 1rem; border-radius: 0.25rem; margin-top: 1rem;">
+        <strong>⚠️ Chyba:</strong> {{ ecomail_error }}
+    </div>
+    {% endif %}
+
+    <!-- Subscriber Lookup -->
+    <div style="margin-top: 1.5rem; background: #f8f9fa; padding: 1.5rem; border-radius: 8px;">
+        <h4 style="margin-top: 0;">🔍 Vyhledávání odběratele</h4>
+        <div style="display: flex; gap: 1rem; margin-bottom: 1rem;">
+            <input type="email" id="lookup_email" class="form-control" placeholder="Zadejte email odběratele"
+                style="flex: 1;">
+            <button class="btn btn-primary" onclick="lookupSubscriber()">Vyhledat</button>
+        </div>
+
+        <div id="lookup_result"
+            style="display: none; background: white; padding: 1rem; border-radius: 0.25rem; border: 1px solid var(--border-color); margin-top: 1rem;">
+            <!-- Results will be populated here -->
+        </div>
+    </div>
+
+    <!-- Contact Lists -->
+    {% if ecomail_lists %}
+    <div style="margin-top: 1.5rem; background: #f8f9fa; padding: 1.5rem; border-radius: 8px;">
+        <h4 style="margin-top: 0;">📋 Kontaktní seznamy</h4>
+        <p style="color: #666; margin-bottom: 1rem;">Nalezeno {{ ecomail_lists|length }} kontaktních seznamů</p>
+
+        <div style="overflow-x: auto;">
+            <table class="applicants-table">
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>Název</th>
+                        <th>Odběratelé</th>
+                        <th>Stav</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for list in ecomail_lists %}
+                    <tr>
+                        <td><span class="badge">{{ list.id }}</span></td>
+                        <td><strong>{{ list.name }}</strong></td>
+                        <td>{{ list.active_subscribers if list.active_subscribers is defined else 'N/A' }}</td>
+                        <td>
+                            {% if list.status == 'active' or not list.status %}
+                            <span style="color: var(--success-color);">● Aktivní</span>
+                            {% else %}
+                            <span style="color: #999;">○ {{ list.status }}</span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Actions -->
+    <div style="margin-top: 1.5rem; display: flex; gap: 1rem; flex-wrap: wrap;">
+        <button class="btn btn-primary" onclick="openCreateListModal()">
+            <span style="margin-right: 0.5rem;">➕</span> Vytvořit nový seznam
+        </button>
+        <button class="btn btn-secondary" onclick="refreshEcomailLists()">
+            <span style="margin-right: 0.5rem;">🔄</span> Obnovit seznamy
+        </button>
+    </div>
+</div>
+
+<!-- Create List Modal -->
+<div id="createListModal" class="modal-overlay">
+    <div class="modal">
+        <div class="modal-title">Vytvořit nový kontaktní seznam</div>
+        <div class="modal-body">
+            <div class="form-group">
+                <label for="new_list_name">Název seznamu *</label>
+                <input type="text" id="new_list_name" class="form-control" placeholder="např. Newsletter 2025" required>
+            </div>
+            <div class="form-group">
+                <label for="new_list_from_name">Jméno odesílatele *</label>
+                <input type="text" id="new_list_from_name" class="form-control" placeholder="např. Mladý divák"
+                    required>
+            </div>
+            <div class="form-group">
+                <label for="new_list_from_email">Email odesílatele *</label>
+                <input type="email" id="new_list_from_email" class="form-control" placeholder="např. info@mladydivak.cz"
+                    required>
+            </div>
+            <div class="form-group">
+                <label for="new_list_reply_to">Reply-To Email *</label>
+                <input type="email" id="new_list_reply_to" class="form-control" placeholder="např. info@mladydivak.cz"
+                    required>
+            </div>
+        </div>
+        <div class="modal-actions">
+            <button class="btn btn-secondary" onclick="closeCreateListModal()">Zrušit</button>
+            <button class="btn btn-primary" onclick="createEcomailList()">Vytvořit</button>
+        </div>
+    </div>
+</div>
+
 <!-- Changelog Section -->
 <div class="settings-section" style="margin-top: 2rem;">
     <h3>📋 Historie změn</h3>
@@ -313,6 +422,148 @@
             closeImportModal();
         }
     }
+
+    // Ecomail functions
+    function refreshEcomailLists() {
+        window.location.reload();
+    }
+
+    function openCreateListModal() {
+        const modal = document.getElementById('createListModal');
+        modal.style.display = 'flex';
+        modal.offsetHeight;
+        modal.classList.add('active');
+        document.getElementById('new_list_name').focus();
+    }
+
+    function closeCreateListModal() {
+        const modal = document.getElementById('createListModal');
+        modal.classList.remove('active');
+        setTimeout(() => {
+            modal.style.display = 'none';
+            document.getElementById('new_list_name').value = '';
+            document.getElementById('new_list_from_name').value = '';
+            document.getElementById('new_list_from_email').value = '';
+            document.getElementById('new_list_reply_to').value = '';
+        }, 300);
+    }
+
+    async function createEcomailList() {
+        const name = document.getElementById('new_list_name').value;
+        const fromName = document.getElementById('new_list_from_name').value;
+        const fromEmail = document.getElementById('new_list_from_email').value;
+        const replyTo = document.getElementById('new_list_reply_to').value;
+
+        if (!name || !fromName || !fromEmail || !replyTo) {
+            alert('Prosím vyplňte všechna povinná pole');
+            return;
+        }
+
+        try {
+            const formData = new FormData();
+            formData.append('name', name);
+            formData.append('from_name', fromName);
+            formData.append('from_email', fromEmail);
+            formData.append('reply_to', replyTo);
+
+            const response = await fetch('/ecomail/create_list', {
+                method: 'POST',
+                body: formData
+            });
+
+            const result = await response.json();
+
+            if (result.success) {
+                closeCreateListModal();
+                window.location.reload();
+            } else {
+                alert('Chyba při vytváření seznamu: ' + (result.error || 'Neznámá chyba'));
+            }
+        } catch (error) {
+            console.error('Error:', error);
+            alert('Chyba při vytváření seznamu');
+        }
+    }
+
+    async function lookupSubscriber() {
+        const email = document.getElementById('lookup_email').value;
+        const resultContainer = document.getElementById('lookup_result');
+
+        if (!email) {
+            alert('Prosím zadejte emailovou adresu');
+            return;
+        }
+
+        resultContainer.style.display = 'block';
+        resultContainer.innerHTML = '<p>Vyhledávání...</p>';
+
+        try {
+            const formData = new FormData();
+            formData.append('email', email);
+
+            const response = await fetch('/ecomail/subscriber', {
+                method: 'POST',
+                body: formData
+            });
+
+            const result = await response.json();
+
+            if (result.success) {
+                const sub = result.data.subscriber;
+                let html = `
+                    <h4 style="margin-top: 0;">${sub.email}</h4>
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+                        <div>
+                            <strong>Jméno:</strong> ${sub.name || '-'} ${sub.surname || ''}<br>
+                            <strong>Telefon:</strong> ${sub.phone || '-'}<br>
+                            <strong>Město:</strong> ${sub.city || '-'}<br>
+                            <strong>Datum narození:</strong> ${sub.birthday || '-'}<br>
+                        </div>
+                        <div>
+                            <strong>Skóre:</strong> ${sub.score || 0}<br>
+                            <strong>Stav:</strong> ${sub.status || '-'}<br>
+                            <strong>Vytvořeno:</strong> ${sub.created_at || '-'}<br>
+                            <strong>Bounced:</strong> ${sub.bounced ? 'Ano' : 'Ne'}<br>
+                        </div>
+                    </div>
+                `;
+
+                // Custom fields
+                if (sub.custom_fields) {
+                    html += '<h5 style="margin-bottom: 0.5rem; margin-top: 1rem;">Vlastní pole</h5><ul style="margin-top: 0; padding-left: 1.5rem;">';
+                    for (const [key, value] of Object.entries(sub.custom_fields)) {
+                        if (value) {
+                            html += `<li><strong>${key}:</strong> ${value}</li>`;
+                        }
+                    }
+                    html += '</ul>';
+                }
+
+                // Lists
+                if (sub.lists && sub.lists.length > 0) {
+                    html += '<h5 style="margin-bottom: 0.5rem; margin-top: 1rem;">Odebírané seznamy</h5><ul style="margin-top: 0; padding-left: 1.5rem;">';
+                    sub.lists.forEach(list => {
+                        html += `<li>ID: ${list.list_id} (Stav: ${list.status})</li>`;
+                    });
+                    html += '</ul>';
+                }
+
+                resultContainer.innerHTML = html;
+            } else {
+                resultContainer.innerHTML = `<p style="color: var(--danger-color);">Chyba: ${result.error}</p>`;
+            }
+        } catch (error) {
+            console.error('Error:', error);
+            resultContainer.innerHTML = '<p style="color: var(--danger-color);">Chyba při připojení k serveru</p>';
+        }
+    }
+
+    // Close Ecomail modal on Escape key
+    document.addEventListener('keydown', function (e) {
+        if (e.key === 'Escape') {
+            closeCreateListModal();
+        }
+    });
 </script>
 
 <style>

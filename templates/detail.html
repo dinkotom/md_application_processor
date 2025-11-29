@@ -5,31 +5,205 @@
 {% block content %}
 <div class="page-header">
     <h2>{{ applicant.first_name }} {{ applicant.last_name }}</h2>
-    <div class="actions" style="display: flex; gap: 2rem; align-items: center;">
-        <div style="display: flex; gap: 0.5rem;">
+</div>
+
+<!-- Action Buttons Card -->
+<div
+    style="background: var(--card-bg); padding: 1rem; border-radius: 0.5rem; margin-bottom: 2rem; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+    <div style="display: flex; flex-wrap: wrap; gap: 1rem; align-items: center; justify-content: space-between;">
+        <!-- Primary Actions -->
+        <div style="display: flex; gap: 0.5rem; flex-wrap: wrap; align-items: center;">
             {% if applicant.email_sent %}
-            <span style="color: var(--success-color); margin-right: 1rem; display: flex; align-items: center;">
+            <span
+                style="color: var(--success-color); display: flex; align-items: center; padding: 0.25rem 0.75rem; background: rgba(40, 167, 69, 0.1); border-radius: 0.25rem; font-size: 0.85rem;">
                 ✓ Email odeslán {{ applicant.email_sent_at[:16] if applicant.email_sent_at else '' }}
             </span>
             {% else %}
-            <button type="button" onclick="openEmailModal()" class="btn btn-success">Odeslat email s kartou</button>
+            <button type="button" onclick="openEmailModal()" class="btn btn-success btn-small">Odeslat email s
+                kartou</button>
             {% endif %}
-            <button type="button" onclick="openDeleteModal()" class="btn btn-danger">Smazat</button>
+
+            <button onclick="exportToEcomail({{ applicant.id }})" class="btn btn-secondary btn-small" id="exportBtn">
+                {% if applicant.exported_to_ecomail %}
+                🔄 Aktualizovat v Ecomail
+                {% else %}
+                📤 Vytvořit v Ecomail
+                {% endif %}
+            </button>
+
+            <button type="button" onclick="openDeleteModal()" class="btn btn-danger btn-small">Smazat</button>
         </div>
 
-        <div style="display: flex; gap: 0.5rem; padding-left: 2rem; border-left: 2px solid var(--border-color);">
+        <!-- Divider for mobile/small screens -->
+        <div style="display: none; width: 100%; height: 1px; background: var(--border-color); margin: 0.5rem 0;"
+            class="mobile-divider"></div>
+
+        <!-- Navigation Actions -->
+        <div style="display: flex; gap: 0.5rem; flex-wrap: wrap; align-items: center; border-left: 1px solid var(--border-color); padding-left: 1rem;"
+            class="nav-actions">
             {% if prev_id %}
-            <a href="{{ url_for('applicant_detail', id=prev_id, **back_args) }}" class="btn btn-secondary">←
-                Předchozí</a>
+            <a href="{{ url_for('applicant_detail', id=prev_id, **back_args) }}" class="btn btn-secondary btn-small"
+                title="Předchozí">←</a>
             {% endif %}
+
+            <a href="{{ url_for('index', **back_args) }}" class="btn btn-secondary btn-small">Zpět na seznam</a>
+
             {% if next_id %}
-            <a href="{{ url_for('applicant_detail', id=next_id, **back_args) }}" class="btn btn-secondary">Následující
-                →</a>
+            <a href="{{ url_for('applicant_detail', id=next_id, **back_args) }}" class="btn btn-secondary btn-small"
+                title="Následující">→</a>
             {% endif %}
-            <a href="{{ url_for('index', **back_args) }}" class="btn btn-secondary">Zpět na seznam</a>
         </div>
     </div>
 </div>
+
+<style>
+    @media (max-width: 768px) {
+        .mobile-divider {
+            display: block !important;
+        }
+
+        .nav-actions {
+            border-left: none !important;
+            padding-left: 0 !important;
+            width: 100%;
+            justify-content: space-between;
+        }
+    }
+</style>
+
+<script>
+    let currentEcomailId = null;
+    let isEcomailUpdate = false;
+
+    function exportToEcomail(id) {
+        currentEcomailId = id;
+        const btn = document.getElementById('exportBtn');
+        const originalText = btn.innerHTML;
+        isEcomailUpdate = originalText.includes('Aktualizovat');
+
+        const confirmMsg = isEcomailUpdate
+            ? 'Opravdu chcete aktualizovat tohoto uchazeče v Ecomailu (seznam TEST)?'
+            : 'Opravdu chcete exportovat tohoto uchazeče do Ecomailu (seznam TEST)?';
+
+        document.getElementById('ecomailConfirmMsg').textContent = confirmMsg;
+
+        const modal = document.getElementById('ecomailModal');
+        modal.style.display = 'flex';
+        modal.offsetHeight; // Trigger reflow
+        modal.classList.add('active');
+    }
+
+    function closeEcomailModal() {
+        const modal = document.getElementById('ecomailModal');
+        modal.classList.remove('active');
+        setTimeout(() => {
+            modal.style.display = 'none';
+            currentEcomailId = null;
+        }, 300);
+    }
+
+    function closeEcomailSuccessModal() {
+        const modal = document.getElementById('ecomailSuccessModal');
+        modal.classList.remove('active');
+        setTimeout(() => {
+            modal.style.display = 'none';
+            window.location.reload();
+        }, 300);
+    }
+
+    async function confirmEcomailExport() {
+        if (!currentEcomailId) return;
+
+        closeEcomailModal();
+
+        const btn = document.getElementById('exportBtn');
+        const originalText = btn.innerHTML;
+
+        btn.disabled = true;
+        btn.innerHTML = isEcomailUpdate ? '⏳ Aktualizuji...' : '⏳ Exportuji...';
+
+        try {
+            const response = await fetch(`/applicant/${currentEcomailId}/export_to_ecomail`, {
+                method: 'POST'
+            });
+
+            const result = await response.json();
+
+            if (result.success) {
+                btn.innerHTML = '🔄 Aktualizovat v Ecomail';
+                btn.disabled = false;
+                const successMsg = isEcomailUpdate
+                    ? '✓ Uchazeč byl úspěšně aktualizován v Ecomailu.'
+                    : '✓ Uchazeč byl úspěšně exportován do Ecomailu.';
+
+                // Show success modal
+                const successModal = document.getElementById('ecomailSuccessModal');
+                document.getElementById('ecomailSuccessMsg').textContent = successMsg;
+                successModal.style.display = 'flex';
+                successModal.offsetHeight;
+                successModal.classList.add('active');
+            } else {
+                btn.disabled = false;
+                btn.innerHTML = originalText;
+                alert('Chyba při exportu: ' + (result.error || 'Neznámá chyba'));
+            }
+        } catch (error) {
+            console.error('Error:', error);
+            btn.disabled = false;
+            btn.innerHTML = originalText;
+            alert('Chyba při komunikaci se serverem.');
+        }
+    }
+
+    // Auto-save note on blur
+    // Auto-save note on blur
+    document.addEventListener('DOMContentLoaded', function () {
+        const noteTextarea = document.getElementById('noteTextarea');
+        if (noteTextarea) {
+            noteTextarea.addEventListener('blur', async function () {
+                const noteText = this.value;
+                const statusEl = document.getElementById('noteSaveStatus');
+
+                // Show saving indicator
+                statusEl.textContent = 'Ukládání...';
+                statusEl.style.color = '#666';
+
+                console.log('Saving note for applicant {{ applicant.id }}:', noteText);
+
+                try {
+                    const formData = new FormData();
+                    formData.append('note', noteText);
+
+                    const response = await fetch('/applicant/{{ applicant.id }}/update_note', {
+                        method: 'POST',
+                        body: formData
+                    });
+
+                    console.log('Response status:', response.status);
+
+                    const result = await response.json();
+                    console.log('Result:', result);
+
+                    if (result.success) {
+                        statusEl.textContent = '✓ Uloženo';
+                        statusEl.style.color = 'var(--success-color)';
+
+                        setTimeout(() => {
+                            statusEl.textContent = '';
+                        }, 2000);
+                    } else {
+                        statusEl.textContent = '✗ Chyba: ' + (result.error || 'Neznámá chyba');
+                        statusEl.style.color = 'var(--danger-color)';
+                    }
+                } catch (error) {
+                    console.error('Error saving note:', error);
+                    statusEl.textContent = '✗ Chyba při ukládání: ' + error.message;
+                    statusEl.style.color = 'var(--danger-color)';
+                }
+            });
+        }
+    });
+</script>
 
 {% if applicant.age is none or (applicant.age < 15 or applicant.age>= 25) %}
     <div class="alert alert-warning"
@@ -80,6 +254,16 @@
             <p style="margin-top: 0.5rem; font-size: 0.9em; color: #666;">
                 <em>Klikněte na obrázek pro stažení v plné kvalitě</em>
             </p>
+        </div>
+    </div>
+
+    <!-- Note Section -->
+    <div class="detail-card full-width" style="margin-bottom: 2rem;">
+        <h3>📝 Poznámka</h3>
+        <div style="margin-top: 1rem;">
+            <textarea id="noteTextarea" class="form-control" rows="4"
+                placeholder="Zadejte poznámku k uchazeči...">{{ applicant.note or '' }}</textarea>
+            <span id="noteSaveStatus" style="display: inline-block; margin-top: 0.5rem; font-size: 0.9em;"></span>
         </div>
     </div>
 
@@ -492,17 +676,27 @@
 
         // Close modals on click outside
         window.onclick = function (event) {
-            if (event.target.classList.contains('modal-overlay')) {
-                if (event.target.id === 'deleteModal') closeDeleteModal();
-                if (event.target.id === 'emailModal') closeEmailModal();
+            const deleteModal = document.getElementById('deleteModal');
+            const emailModal = document.getElementById('emailModal');
+            const ecomailModal = document.getElementById('ecomailModal');
+
+            if (event.target == deleteModal) {
+                closeDeleteModal();
+            }
+            if (event.target == emailModal) {
+                closeEmailModal();
+            }
+            if (event.target == ecomailModal) {
+                closeEcomailModal();
             }
         }
 
-        // Close on Escape key
-        document.addEventListener('keydown', function (e) {
-            if (e.key === 'Escape') {
+        // Close modals on Escape key
+        document.addEventListener('keydown', function (event) {
+            if (event.key === 'Escape') {
                 closeDeleteModal();
                 closeEmailModal();
+                closeEcomailModal();
             }
         });
 
@@ -604,4 +798,31 @@
             }
         }
     </script>
+    <!-- Ecomail Confirmation Modal -->
+    <div id="ecomailModal" class="modal-overlay">
+        <div class="modal">
+            <div class="modal-title">Potvrzení exportu do Ecomailu</div>
+            <div class="modal-body">
+                <p id="ecomailConfirmMsg"></p>
+            </div>
+            <div class="modal-actions">
+                <button class="btn btn-secondary" onclick="closeEcomailModal()">Zrušit</button>
+                <button class="btn btn-primary" onclick="confirmEcomailExport()">Potvrdit</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Ecomail Success Modal -->
+    <div id="ecomailSuccessModal" class="modal-overlay">
+        <div class="modal">
+            <div class="modal-title">Úspěch</div>
+            <div class="modal-body">
+                <p id="ecomailSuccessMsg" style="color: var(--success-color); font-weight: 500;"></p>
+            </div>
+            <div class="modal-actions">
+                <button class="btn btn-primary" onclick="closeEcomailSuccessModal()">OK</button>
+            </div>
+        </div>
+    </div>
+
     {% endblock %}

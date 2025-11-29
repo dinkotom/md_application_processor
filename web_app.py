@@ -213,6 +213,7 @@ def get_filtered_applicants(request_args):
     filter_school = request_args.get('school', '')
     filter_interest = request_args.get('interest', '')
     filter_source = request_args.get('source', '')
+    filter_alerts = request_args.get('alerts', '')  # New: filter for applicants with alerts
     sort_by = request_args.get('sort', 'id')  # Default sort by ID
     sort_order = request_args.get('order', 'desc')  # Default descending
     
@@ -273,6 +274,37 @@ def get_filtered_applicants(request_args):
                     filtered_applicants.append(app)
         all_applicants = filtered_applicants
 
+    # Filter by alerts if requested
+    if filter_alerts == 'true':
+        from src.validator import is_suspect_parent_email
+        filtered_by_alerts = []
+        for app in all_applicants:
+            has_alert = False
+            
+            # Check age warning
+            age = calculate_age(app['dob']) if app['dob'] else None
+            if age is None or age < 15 or age >= 25:
+                has_alert = True
+            
+            # Check parent email warning (not dismissed)
+            if not app.get('parent_email_warning_dismissed'):
+                if is_suspect_parent_email(
+                    app.get('first_name', ''),
+                    app.get('last_name', ''),
+                    app.get('email', '')
+                ):
+                    has_alert = True
+            
+            # Check duplicate warning (not dismissed)
+            if not app.get('duplicate_warning_dismissed'):
+                if app.get('is_duplicate'):
+                    has_alert = True
+            
+            if has_alert:
+                filtered_by_alerts.append(app)
+        
+        all_applicants = filtered_by_alerts
+
     # Sort by ID or application_received
     if sort_by == 'application_received':
         all_applicants.sort(
@@ -300,6 +332,7 @@ def index():
     filter_school = request.args.get('school', '')
     filter_interest = request.args.get('interest', '')
     filter_source = request.args.get('source', '')
+    filter_alerts = request.args.get('alerts', '')
     sort_by = request.args.get('sort', 'id')
     sort_order = request.args.get('order', 'desc')
 
@@ -359,6 +392,7 @@ def index():
                          filter_school=filter_school,
                          filter_interest=filter_interest,
                          filter_source=filter_source,
+                         filter_alerts=filter_alerts,
                          page=page,
                          total_pages=total_pages,
                          total=len(all_applicants))
@@ -694,7 +728,27 @@ def stats():
 @app.route('/advanced')
 def advanced():
     """Advanced settings page"""
-    return render_template('advanced.html')
+    from src.ecomail import EcomailClient
+    
+    # Fetch Ecomail lists
+    ecomail_lists = None
+    ecomail_error = None
+    try:
+        client = EcomailClient()
+        result = client.get_lists()
+        if result['success']:
+            ecomail_lists = result.get('data', [])
+        else:
+            ecomail_error = result.get('error', 'Neznámá chyba')
+    except ValueError as e:
+        ecomail_error = str(e)
+    except Exception as e:
+        logger.error(f"Error fetching Ecomail lists: {e}")
+        ecomail_error = f"Neočekávaná chyba: {str(e)}"
+    
+    return render_template('advanced.html', 
+                         ecomail_lists=ecomail_lists,
+                         ecomail_error=ecomail_error)
 
 # Soft delete endpoint
 @app.route('/applicant/<int:id>/delete', methods=['POST'])
@@ -769,8 +823,11 @@ def update_applicant_field(id):
 @app.route('/applicant/<int:id>/update_note', methods=['POST'])
 def update_applicant_note(id):
     """Update applicant note"""
-    data = request.get_json()
-    note = data.get('note', '')
+    if request.is_json:
+        data = request.get_json()
+        note = data.get('note', '')
+    else:
+        note = request.form.get('note', '')
     
     conn = get_db_connection()
     try:
@@ -822,10 +879,10 @@ def qr_code(id):
     
     return send_file(qr_bytes, mimetype='image/png')
 
-@app.route('/applicant/<int:id>/export', methods=['POST'])
-def export_applicant(id):
+@app.route('/applicant/<int:id>/export_to_ecomail', methods=['POST'])
+def export_applicant_to_ecomail(id):
     """Export applicant to Ecomail"""
-    from src.ecomail import export_to_ecomail
+    from src.ecomail import EcomailClient
     from datetime import datetime
     
     conn = get_db_connection()
@@ -833,32 +890,116 @@ def export_applicant(id):
     
     if applicant is None:
         conn.close()
-        return "Applicant not found", 404
+        return jsonify({'success': False, 'error': 'Applicant not found'}), 404
     
     app_data = dict(applicant)
     
-    # Call mocked Ecomail API
-    result = export_to_ecomail(app_data)
-    
-    if result['success']:
-        # Update database status
-        try:
-            conn = get_db_connection() # Re-open connection for update
+    # Initialize Ecomail client
+    try:
+        client = EcomailClient()
+        # Get list ID from env or use a default/first list
+        list_id = os.environ.get('ECOMAIL_LIST_ID')
+        
+        # If no list ID configured, try to find a list named "TEST" or use the first one
+        if not list_id:
+            lists_result = client.get_lists()
+            if lists_result['success'] and lists_result['data']:
+                # Try to find list with 'test' in name
+                for lst in lists_result['data']:
+                    if 'test' in lst.get('name', '').lower():
+                        list_id = lst['id']
+                        break
+                # Fallback to first list
+                if not list_id and lists_result['data']:
+                    list_id = lists_result['data'][0]['id']
+        
+        if not list_id:
+            conn.close()
+            return jsonify({'success': False, 'error': 'No Ecomail list configured or found'}), 500
+
+        # Prepare subscriber data
+        # Parse interests into tags (comma-separated values)
+        interests = app_data.get('interests', '')
+        tags = [tag.strip() for tag in interests.split(',') if tag.strip()] if interests else []
+        
+        # Add character (Povaha) to tags if present
+        character = app_data.get('character', '')
+        if character:
+            tags.append(character)
+        
+        # Add color (Barva) to tags if present
+        color = app_data.get('color', '')
+        if color:
+            tags.append(color)
+        
+        # Convert DOB from DD/MM/YYYY or DD.MM.YYYY to YYYY-MM-DD for Ecomail
+        dob_raw = app_data.get('dob', '')
+        birthday = ''
+        if dob_raw:
+            try:
+                # Handle both / and . as separators
+                dob_parts = dob_raw.replace('.', '/').split('/')
+                if len(dob_parts) == 3:
+                    day, month, year = dob_parts
+                    birthday = f"{year}-{month.zfill(2)}-{day.zfill(2)}"
+            except Exception as e:
+                logger.warning(f"Could not parse DOB '{dob_raw}': {e}")
+        
+        subscriber_data = {
+            'email': app_data['email'],
+            'name': app_data['first_name'],
+            'surname': app_data['last_name'],
+            'phone': app_data.get('phone', ''),
+            'city': app_data.get('city', ''),
+            'birthday': birthday,
+            'tags': tags,
+            'custom_fields': {
+                'CLENSKE_CISLO': str(app_data.get('membership_id', ''))
+            }
+        }
+        
+        logger.info(f"Exporting to Ecomail. City: '{app_data.get('city', '')}', DOB: '{app_data.get('dob', '')}', Tags: {subscriber_data['tags']}")
+        logger.debug(f"Full subscriber data: {subscriber_data}")
+        
+        result = client.create_subscriber(list_id, subscriber_data)
+        
+        if result['success']:
+            # Update database status
             conn.execute('''
                 UPDATE applicants 
                 SET exported_to_ecomail = 1, exported_at = ? 
                 WHERE id = ?
             ''', (datetime.now().strftime('%Y-%m-%d %H:%M:%S'), id))
             conn.commit()
+            logger.info(f"Applicant {id} exported to Ecomail list {list_id} successfully.")
             conn.close()
-            logger.info(f"Applicant {id} exported to Ecomail successfully.")
-        except Exception as e:
-            logger.error(f"Failed to update export status for applicant {id}: {str(e)}")
+            return jsonify({'success': True})
+        else:
+            logger.error(f"Failed to export applicant {id} to Ecomail: {result.get('error')}")
+            conn.close()
+            return jsonify({'success': False, 'error': result.get('error')}), 500
             
+    except Exception as e:
+        logger.error(f"Exception during Ecomail export: {str(e)}")
+        conn.close()
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/ecomail/subscriber', methods=['POST'])
+def lookup_subscriber():
+    """Lookup subscriber in Ecomail"""
+    from src.ecomail import EcomailClient
+    
+    email = request.form.get('email')
+    if not email:
+        return jsonify({'success': False, 'error': 'Email is required'}), 400
+        
+    try:
+        client = EcomailClient()
+        result = client.get_subscriber(email)
         return jsonify(result)
-    else:
-        logger.error(f"Failed to export applicant {id} to Ecomail: {result['message']}")
-        return jsonify(result), 500
+    except Exception as e:
+        logger.error(f"Error looking up subscriber: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
 
 @app.route('/import/preview', methods=['POST'])
 def import_preview():

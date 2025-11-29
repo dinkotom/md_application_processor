@@ -23,24 +23,44 @@
         <button type="submit" class="btn btn-primary">Hledat</button>
     </form>
 
-    <!-- Status Filter Buttons -->
-    <div class="status-filter-buttons">
-        <a href="{{ url_for('index', search=search, age_group=filter_age_group, city=filter_city, school=filter_school, interest=filter_interest, source=filter_source) }}"
-            class="status-filter-btn {% if not filter_status %}active{% endif %}">
-            Vše
-        </a>
-        <a href="{{ url_for('index', status='Nová', search=search, age_group=filter_age_group, city=filter_city, school=filter_school, interest=filter_interest, source=filter_source) }}"
-            class="status-filter-btn status-nova {% if filter_status == 'Nová' %}active{% endif %}">
-            Nová
-        </a>
-        <a href="{{ url_for('index', status='Zpracovává se', search=search, age_group=filter_age_group, city=filter_city, school=filter_school, interest=filter_interest, source=filter_source) }}"
-            class="status-filter-btn status-zpracovava-se {% if filter_status == 'Zpracovává se' %}active{% endif %}">
-            Zpracovává se
-        </a>
-        <a href="{{ url_for('index', status='Vyřízená', search=search, age_group=filter_age_group, city=filter_city, school=filter_school, interest=filter_interest, source=filter_source) }}"
-            class="status-filter-btn status-vyrizena {% if filter_status == 'Vyřízená' %}active{% endif %}">
-            Vyřízená
-        </a>
+    <!-- Status and Alert Filter Buttons -->
+    <div style="display: flex; justify-content: space-between; align-items: center; gap: 1rem; margin-bottom: 1rem;">
+        <!-- Status Filter Buttons (Left) -->
+        <div class="status-filter-buttons">
+            <a href="{{ url_for('index', status='Nová', search=search, age_group=filter_age_group, city=filter_city, school=filter_school, interest=filter_interest, source=filter_source, alerts=filter_alerts) }}"
+                class="status-filter-btn status-nova {% if filter_status == 'Nová' %}active{% endif %}">
+                Nová
+            </a>
+            <a href="{{ url_for('index', status='Zpracovává se', search=search, age_group=filter_age_group, city=filter_city, school=filter_school, interest=filter_interest, source=filter_source, alerts=filter_alerts) }}"
+                class="status-filter-btn status-zpracovava-se {% if filter_status == 'Zpracovává se' %}active{% endif %}">
+                Zpracovává se
+            </a>
+            <a href="{{ url_for('index', status='Vyřízená', search=search, age_group=filter_age_group, city=filter_city, school=filter_school, interest=filter_interest, source=filter_source, alerts=filter_alerts) }}"
+                class="status-filter-btn status-vyrizena {% if filter_status == 'Vyřízená' %}active{% endif %}">
+                Vyřízená
+            </a>
+            {% if filter_status %}
+            <a href="{{ url_for('index', search=search, age_group=filter_age_group, city=filter_city, school=filter_school, interest=filter_interest, source=filter_source, alerts=filter_alerts) }}"
+                class="status-filter-btn" style="margin-left: 0.5rem;">
+                ✕ Zrušit
+            </a>
+            {% endif %}
+        </div>
+
+        <!-- Alert Filter Button (Right) -->
+        <div>
+            <a href="{{ url_for('index', alerts='true', search=search, status=filter_status, age_group=filter_age_group, city=filter_city, school=filter_school, interest=filter_interest, source=filter_source) }}"
+                class="status-filter-btn {% if filter_alerts == 'true' %}active{% endif %}"
+                style="background: #ff9800; border-color: #ff9800;">
+                ⚠️ Pouze s upozorněními
+            </a>
+            {% if filter_alerts == 'true' %}
+            <a href="{{ url_for('index', search=search, status=filter_status, age_group=filter_age_group, city=filter_city, school=filter_school, interest=filter_interest, source=filter_source) }}"
+                class="status-filter-btn" style="margin-left: 0.5rem;">
+                ✕ Zrušit
+            </a>
+            {% endif %}
+        </div>
     </div>
 
     {% if filter_age_group or filter_city or filter_school or filter_interest or filter_source %}
@@ -445,14 +465,12 @@
         const noteText = document.getElementById('noteText').value;
 
         try {
+            const formData = new FormData();
+            formData.append('note', noteText);
+
             const response = await fetch(`/applicant/${currentNoteApplicantId}/update_note`, {
                 method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({
-                    note: noteText
-                })
+                body: formData
             });
 
             const result = await response.json();

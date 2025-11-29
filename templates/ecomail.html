@@ -1,0 +1,307 @@
+{% extends "base.html" %}
+
+{% block title %}Ecomail - Mladý divák{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h2>Ecomail Integration</h2>
+    <p class="subtitle">Development and testing controls for Ecomail integration</p>
+</div>
+
+{% if error %}
+<div
+    style="background: rgba(220, 53, 69, 0.1); border-left: 4px solid #dc3545; padding: 1rem; border-radius: 0.25rem; margin-top: 2rem;">
+    <strong>⚠️ Error:</strong> {{ error }}
+</div>
+{% endif %}
+
+{% if lists %}
+<div style="background: var(--card-bg); padding: 2rem; border-radius: 0.5rem; margin-top: 2rem;">
+    <h3 style="margin-top: 0; color: var(--accent-color);">📋 Contact Lists</h3>
+    <p style="color: #999; margin-bottom: 1.5rem;">Found {{ lists|length }} contact list(s) in your Ecomail account</p>
+
+    <div style="overflow-x: auto;">
+        <table class="applicants-table">
+            <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>Name</th>
+                    <th>Subscribers</th>
+                    <th>Status</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for list in lists %}
+                <tr>
+                    <td><span class="badge">{{ list.id }}</span></td>
+                    <td><strong>{{ list.name }}</strong></td>
+                    <td>{{ list.active_subscribers if list.active_subscribers is defined else 'N/A' }}</td>
+                    <td>
+                        {% if list.status == 'active' or not list.status %}
+                        <span style="color: var(--success-color);">● Active</span>
+                        {% else %}
+                        <span style="color: #999;">○ {{ list.status }}</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        <button class="btn btn-small btn-secondary" onclick="viewListDetails({{ list.id }})">
+                            View Details
+                        </button>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<div style="background: var(--card-bg); padding: 2rem; border-radius: 0.5rem; margin-top: 2rem;">
+    <h3 style="margin-top: 0; color: var(--accent-color);">🔧 Actions</h3>
+
+    <div style="display: flex; gap: 1rem; flex-wrap: wrap;">
+        <button class="btn btn-primary" onclick="openCreateListModal()">
+            <span style="margin-right: 0.5rem;">➕</span> Create New List
+        </button>
+        <button class="btn btn-primary" onclick="testConnection()">
+            <span style="margin-right: 0.5rem;">🔌</span> Test Connection
+        </button>
+        <button class="btn btn-secondary" onclick="refreshLists()">
+            <span style="margin-right: 0.5rem;">🔄</span> Refresh Lists
+        </button>
+        <button class="btn btn-secondary" disabled>
+            <span style="margin-right: 0.5rem;">📤</span> Export Contacts (Coming Soon)
+        </button>
+    </div>
+</div>
+
+{% else %}
+<div style="background: var(--card-bg); padding: 2rem; border-radius: 0.5rem; margin-top: 2rem;">
+    <h3 style="margin-top: 0; color: var(--accent-color);">🚧 Getting Started</h3>
+    <p>No contact lists loaded yet. Click the button below to fetch your Ecomail contact lists.</p>
+
+    <div style="margin-top: 2rem; display: flex; gap: 1rem;">
+        <button class="btn btn-primary" onclick="refreshLists()">
+            <span style="margin-right: 0.5rem;">🔌</span> Load Contact Lists
+        </button>
+        <button class="btn btn-secondary" onclick="openCreateListModal()">
+            <span style="margin-right: 0.5rem;">➕</span> Create New List
+        </button>
+    </div>
+</div>
+{% endif %}
+
+<!-- Subscriber Lookup Section -->
+<div style="background: var(--card-bg); padding: 2rem; border-radius: 0.5rem; margin-top: 2rem;">
+    <h3 style="margin-top: 0; color: var(--accent-color);">🔍 Subscriber Lookup</h3>
+    <div style="display: flex; gap: 1rem; margin-bottom: 1rem;">
+        <input type="email" id="lookup_email" class="form-control" placeholder="Enter subscriber email"
+            style="flex: 1;">
+        <button class="btn btn-primary" onclick="lookupSubscriber()">Search</button>
+    </div>
+
+    <div id="lookup_result"
+        style="display: none; background: rgba(0,0,0,0.02); padding: 1rem; border-radius: 0.25rem; border: 1px solid var(--border-color);">
+        <!-- Results will be populated here -->
+    </div>
+</div>
+
+<div
+    style="margin-top: 2rem; padding: 1rem; background: rgba(255, 193, 7, 0.1); border-left: 4px solid #ffc107; border-radius: 0.25rem;">
+    <strong>Note:</strong> This tab is for development and testing purposes. It may be removed once the integration is
+    complete and stable.
+</div>
+
+<!-- Create List Modal -->
+<div id="createListModal" class="modal-overlay">
+    <div class="modal">
+        <div class="modal-title">Create New Contact List</div>
+        <div class="modal-body">
+            <div class="form-group">
+                <label for="new_list_name">List Name *</label>
+                <input type="text" id="new_list_name" class="form-control" placeholder="e.g. Newsletter 2025" required>
+            </div>
+            <div class="form-group">
+                <label for="new_list_from_name">Sender Name *</label>
+                <input type="text" id="new_list_from_name" class="form-control" placeholder="e.g. Mladý divák" required>
+            </div>
+            <div class="form-group">
+                <label for="new_list_from_email">Sender Email *</label>
+                <input type="email" id="new_list_from_email" class="form-control" placeholder="e.g. info@mladydivak.cz"
+                    required>
+            </div>
+            <div class="form-group">
+                <label for="new_list_reply_to">Reply-To Email *</label>
+                <input type="email" id="new_list_reply_to" class="form-control" placeholder="e.g. info@mladydivak.cz"
+                    required>
+            </div>
+        </div>
+        <div class="modal-actions">
+            <button class="btn btn-secondary" onclick="closeCreateListModal()">Cancel</button>
+            <button class="btn btn-primary" onclick="createList()">Create</button>
+        </div>
+    </div>
+</div>
+
+<script>
+    function testConnection() {
+        alert('Testing connection to Ecomail API...');
+        // TODO: Implement API test endpoint
+    }
+
+    function refreshLists() {
+        window.location.reload();
+    }
+
+    function viewListDetails(listId) {
+        alert('Viewing details for list ID: ' + listId);
+        // TODO: Implement list details view
+    }
+
+    function openCreateListModal() {
+        const modal = document.getElementById('createListModal');
+        modal.style.display = 'flex';
+        modal.offsetHeight;
+        modal.classList.add('active');
+        document.getElementById('new_list_name').focus();
+    }
+
+    function closeCreateListModal() {
+        const modal = document.getElementById('createListModal');
+        modal.classList.remove('active');
+        setTimeout(() => {
+            modal.style.display = 'none';
+            document.getElementById('new_list_name').value = '';
+            document.getElementById('new_list_from_name').value = '';
+            document.getElementById('new_list_from_email').value = '';
+            document.getElementById('new_list_reply_to').value = '';
+        }, 300);
+    }
+
+    async function createList() {
+        const name = document.getElementById('new_list_name').value;
+        const fromName = document.getElementById('new_list_from_name').value;
+        const fromEmail = document.getElementById('new_list_from_email').value;
+        const replyTo = document.getElementById('new_list_reply_to').value;
+
+        if (!name || !fromName || !fromEmail || !replyTo) {
+            alert('Please fill in all required fields');
+            return;
+        }
+
+        try {
+            const formData = new FormData();
+            formData.append('name', name);
+            formData.append('from_name', fromName);
+            formData.append('from_email', fromEmail);
+            formData.append('reply_to', replyTo);
+
+            const response = await fetch('/ecomail/create_list', {
+                method: 'POST',
+                body: formData
+            });
+
+            const result = await response.json();
+
+            if (result.success) {
+                closeCreateListModal();
+                window.location.reload();
+            } else {
+                alert('Error creating list: ' + (result.error || 'Unknown error'));
+            }
+        } catch (error) {
+            console.error('Error:', error);
+            alert('Error creating list');
+        }
+    }
+
+    async function lookupSubscriber() {
+        const email = document.getElementById('lookup_email').value;
+        const resultContainer = document.getElementById('lookup_result');
+
+        if (!email) {
+            alert('Please enter an email address');
+            return;
+        }
+
+        resultContainer.style.display = 'block';
+        resultContainer.innerHTML = '<p>Searching...</p>';
+
+        try {
+            const formData = new FormData();
+            formData.append('email', email);
+
+            const response = await fetch('/ecomail/subscriber', {
+                method: 'POST',
+                body: formData
+            });
+
+            const result = await response.json();
+
+            if (result.success) {
+                const sub = result.data.subscriber;
+                let html = `
+                    <h4 style="margin-top: 0;">${sub.email}</h4>
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+                        <div>
+                            <strong>Name:</strong> ${sub.name || '-'} ${sub.surname || ''}<br>
+                            <strong>Phone:</strong> ${sub.phone || '-'}<br>
+                            <strong>City:</strong> ${sub.city || '-'}<br>
+                            <strong>Birthday:</strong> ${sub.birthday || '-'}<br>
+                        </div>
+                        <div>
+                            <strong>Score:</strong> ${sub.score || 0}<br>
+                            <strong>Status:</strong> ${sub.status || '-'}<br>
+                            <strong>Created:</strong> ${sub.created_at || '-'}<br>
+                            <strong>Bounced:</strong> ${sub.bounced ? 'Yes' : 'No'}<br>
+                        </div>
+                    </div>
+                `;
+
+                // Custom fields
+                if (sub.custom_fields) {
+                    html += '<h5 style="margin-bottom: 0.5rem;">Custom Fields</h5><ul style="margin-top: 0; padding-left: 1.5rem;">';
+                    for (const [key, value] of Object.entries(sub.custom_fields)) {
+                        if (value) {
+                            html += `<li><strong>${key}:</strong> ${value}</li>`;
+                        }
+                    }
+                    html += '</ul>';
+                }
+
+                // Lists
+                if (sub.lists && sub.lists.length > 0) {
+                    html += '<h5 style="margin-bottom: 0.5rem;">Subscribed Lists</h5><ul style="margin-top: 0; padding-left: 1.5rem;">';
+                    sub.lists.forEach(list => {
+                        html += `<li>ID: ${list.list_id} (Status: ${list.status})</li>`;
+                    });
+                    html += '</ul>';
+                }
+
+                resultContainer.innerHTML = html;
+            } else {
+                resultContainer.innerHTML = `<p style="color: var(--danger-color);">Error: ${result.error}</p>`;
+            }
+        } catch (error) {
+            console.error('Error:', error);
+            resultContainer.innerHTML = '<p style="color: var(--danger-color);">Error connecting to server</p>';
+        }
+    }
+
+    // Close modal on Escape key
+    document.addEventListener('keydown', function (e) {
+        if (e.key === 'Escape') {
+            closeCreateListModal();
+        }
+    });
+
+    // Close modal on click outside
+    window.addEventListener('click', function (event) {
+        const modal = document.getElementById('createListModal');
+        if (event.target === modal) {
+            closeCreateListModal();
+        }
+    });
+</script>
+
+{% endblock %}
