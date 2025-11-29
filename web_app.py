@@ -594,7 +594,34 @@ def applicant_detail(id):
             next_id = all_filtered[current_index + 1]['id']
     
     current_mode = session.get('mode', 'test')
-    return render_template('detail.html', applicant=app_dict, back_args=back_args, prev_id=prev_id, next_id=next_id, current_mode=current_mode)
+    
+    # Fetch Ecomail list names for confirmation dialog
+    ecomail_list_name = None
+    try:
+        from src.ecomail import EcomailClient
+        client = EcomailClient()
+        lists_result = client.get_lists()
+        
+        if lists_result['success'] and lists_result['data']:
+            # Get the appropriate list ID based on mode
+            target_list_id = ECOMAIL_LIST_ID_TEST if current_mode == 'test' else ECOMAIL_LIST_ID_PROD
+            
+            # Find the list with matching ID
+            for lst in lists_result['data']:
+                if lst.get('id') == target_list_id:
+                    ecomail_list_name = lst.get('name', f'List {target_list_id}')
+                    break
+            
+            # Fallback if list not found
+            if not ecomail_list_name:
+                ecomail_list_name = f'List ID {target_list_id}'
+    except Exception as e:
+        logger.warning(f"Could not fetch Ecomail list names: {e}")
+        # Fallback to showing just the ID
+        target_list_id = ECOMAIL_LIST_ID_TEST if current_mode == 'test' else ECOMAIL_LIST_ID_PROD
+        ecomail_list_name = f'List ID {target_list_id}'
+    
+    return render_template('detail.html', applicant=app_dict, back_args=back_args, prev_id=prev_id, next_id=next_id, current_mode=current_mode, ecomail_list_name=ecomail_list_name)
 
 @app.route('/applicant/<int:id>/card')
 def applicant_card(id):
