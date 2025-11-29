@@ -1436,13 +1436,16 @@ def bulk_export_to_ecomail():
                 
                 # Check if subscriber exists
                 existing = client.get_subscriber(app['email'])
-                is_update = existing.get('success') and existing.get('data')
+                is_update = existing.get('success') and existing.get('data')\n                
+                # For new subscribers, use their newsletter consent from database
+                # For existing subscribers, pass None to preserve their current status
+                newsletter_status_param = None if is_update else app.get('newsletter', 1)
                 
-                # Create/update subscriber WITHOUT modifying subscription status
+                # Create/update subscriber
                 result = client.create_subscriber(
                     list_id, 
                     subscriber_data, 
-                    newsletter_status=None  # Pass None to preserve existing status
+                    newsletter_status=newsletter_status_param
                 )
                 
                 if result['success']:
