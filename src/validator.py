@@ -165,7 +165,7 @@ def record_applicant(data: dict, db_path: str = DB_PATH):
     source_detail = data.get('source_detail', '').strip()
     message = data.get('message', '').strip()
     color = data.get('color', '').strip()
-    newsletter = data.get('newsletter', 0)  # Now an integer (0 or 1)
+    newsletter = data.get('newsletter', 1)  # Now an integer (0 or 1), default to opt-in
     full_body = data.get('full_body', '').strip()
     application_received = data.get('application_received')  # Can be None for CSV imports
     
