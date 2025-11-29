@@ -1427,11 +1427,11 @@ def bulk_export_to_ecomail():
                 }
                 
                 # Add custom fields if present
-                if app.get('membership_id'):
+                if app['membership_id']:
                     subscriber_data['CLENSKE_CISLO'] = app['membership_id']
-                if app.get('city'):
+                if app['city']:
                     subscriber_data['city'] = app['city']
-                if app.get('phone'):
+                if app['phone']:
                     subscriber_data['phone'] = app['phone']
                 
                 # Check if subscriber exists
@@ -1440,7 +1440,7 @@ def bulk_export_to_ecomail():
                 
                 # For new subscribers, use their newsletter consent from database
                 # For existing subscribers, pass None to preserve their current status
-                newsletter_status_param = None if is_update else app.get('newsletter', 1)
+                newsletter_status_param = None if is_update else (app['newsletter'] if app['newsletter'] is not None else 1)
                 
                 # Create/update subscriber
                 result = client.create_subscriber(
