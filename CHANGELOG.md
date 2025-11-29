@@ -40,6 +40,9 @@
 - **Database:**
     - Added migration `migrate_newsletter_integer.py` to convert legacy text data to integer.
     - Updated schema to enforce `INTEGER NOT NULL DEFAULT 1` for newsletter.
+- **Deployment:**
+    - Added `requests` to `requirements.txt`.
+    - Updated `start_app.sh` and `start_app.command` to automatically install dependencies on startup.
 
 ### Opraveno
 - **Ecomail export**: Opravena chyba 404 při exportu

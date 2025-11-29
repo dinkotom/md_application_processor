@@ -99,4 +99,4 @@ md_application_processor/
 
 ## Version
 
-Current Version: **1.1**
+Current Version: **1.4**

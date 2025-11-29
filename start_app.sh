@@ -6,6 +6,13 @@ DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 # Change to that directory
 cd "$DIR"
 
+# Install dependencies
+echo "Checking dependencies..."
+pip3 install -r requirements.txt > /dev/null 2>&1
+if [ $? -ne 0 ]; then
+    echo "Warning: Failed to install dependencies. Trying to continue..."
+fi
+
 # Open browser after a short delay (in background)
 (sleep 2 && open http://localhost:5000) &
 
