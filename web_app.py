@@ -35,6 +35,10 @@ from flask import session
 DB_PATH_TEST = 'applications_test.db'
 DB_PATH_PROD = 'applications.db'
 
+# Ecomail configuration
+ECOMAIL_LIST_ID_TEST = 16
+ECOMAIL_LIST_ID_PROD = 17
+
 VERSION = "1.2"
 
 def init_db(db_path):
@@ -897,25 +901,12 @@ def export_applicant_to_ecomail(id):
     # Initialize Ecomail client
     try:
         client = EcomailClient()
-        # Get list ID from env or use a default/first list
-        list_id = os.environ.get('ECOMAIL_LIST_ID')
         
-        # If no list ID configured, try to find a list named "TEST" or use the first one
-        if not list_id:
-            lists_result = client.get_lists()
-            if lists_result['success'] and lists_result['data']:
-                # Try to find list with 'test' in name
-                for lst in lists_result['data']:
-                    if 'test' in lst.get('name', '').lower():
-                        list_id = lst['id']
-                        break
-                # Fallback to first list
-                if not list_id and lists_result['data']:
-                    list_id = lists_result['data'][0]['id']
+        # Get list ID based on current mode (test or production)
+        current_mode = session.get('mode', 'test')
+        list_id = ECOMAIL_LIST_ID_TEST if current_mode == 'test' else ECOMAIL_LIST_ID_PROD
         
-        if not list_id:
-            conn.close()
-            return jsonify({'success': False, 'error': 'No Ecomail list configured or found'}), 500
+        logger.info(f"Using Ecomail list ID {list_id} for {current_mode} mode")
 
         # Prepare subscriber data
         # Parse interests into tags (comma-separated values)
