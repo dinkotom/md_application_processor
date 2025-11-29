@@ -123,72 +123,73 @@
             const select = document.getElementById('ecomailListId');
             select.innerHTML = '<option value="">Chyba načítání seznamů</option>';
         }
+    }
 
-        let selectedListId = null;
-        let selectedListName = null;
+    let selectedListId = null;
+    let selectedListName = null;
 
-        function bulkExportToEcomail() {
-            const listId = document.getElementById('ecomailListId').value;
-            const btn = document.getElementById('bulkExportBtn');
+    function bulkExportToEcomail() {
+        const listId = document.getElementById('ecomailListId').value;
+        const btn = document.getElementById('bulkExportBtn');
 
-            if (!listId) {
-                alert('Prosím vyberte cílový seznam v Ecomailu.');
-                return;
-            }
-
-            // Store values and show confirmation modal
-            selectedListId = listId;
-            selectedListName = document.getElementById('ecomailListId').selectedOptions[0].textContent;
-
-            const confirmMsg = `Opravdu chcete exportovat všechny uchazeče do seznamu "${selectedListName}"?\n\nStav odběru existujících kontaktů zůstane zachován.`;
-            document.getElementById('bulkExportConfirmMsg').textContent = confirmMsg;
-
-            // Show modal
-            const modal = document.getElementById('bulkExportModal');
-            modal.style.display = 'flex';
-            modal.offsetHeight; // Trigger reflow
-            modal.classList.add('active');
+        if (!listId) {
+            alert('Prosím vyberte cílový seznam v Ecomailu.');
+            return;
         }
 
-        function closeBulkExportModal() {
-            const modal = document.getElementById('bulkExportModal');
-            modal.classList.remove('active');
-            setTimeout(() => {
-                modal.style.display = 'none';
-                selectedListId = null;
-                selectedListName = null;
-            }, 200);
-        }
+        // Store values and show confirmation modal
+        selectedListId = listId;
+        selectedListName = document.getElementById('ecomailListId').selectedOptions[0].textContent;
 
-        async function confirmBulkExport() {
-            closeBulkExportModal();
+        const confirmMsg = `Opravdu chcete exportovat všechny uchazeče do seznamu "${selectedListName}"?\n\nStav odběru existujících kontaktů zůstane zachován.`;
+        document.getElementById('bulkExportConfirmMsg').textContent = confirmMsg;
 
-            const btn = document.getElementById('bulkExportBtn');
-            btn.disabled = true;
-            btn.innerHTML = '⏳ Exportuji...';
+        // Show modal
+        const modal = document.getElementById('bulkExportModal');
+        modal.style.display = 'flex';
+        modal.offsetHeight; // Trigger reflow
+        modal.classList.add('active');
+    }
 
-            try {
-                const response = await fetch('/exports/ecomail/bulk', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify({
-                        list_id: parseInt(selectedListId)
-                    })
-                });
+    function closeBulkExportModal() {
+        const modal = document.getElementById('bulkExportModal');
+        modal.classList.remove('active');
+        setTimeout(() => {
+            modal.style.display = 'none';
+            selectedListId = null;
+            selectedListName = null;
+        }, 200);
+    }
 
-                const result = await response.json();
+    async function confirmBulkExport() {
+        closeBulkExportModal();
 
-                // Show results modal
-                const resultsModal = document.getElementById('bulkExportResultsModal');
-                const titleEl = document.getElementById('bulkExportResultsTitle');
-                const contentEl = document.getElementById('bulkExportResultsContent');
+        const btn = document.getElementById('bulkExportBtn');
+        btn.disabled = true;
+        btn.innerHTML = '⏳ Exportuji...';
 
-                if (result.success) {
-                    titleEl.innerHTML = '✓ Export úspěšný!';
-                    titleEl.style.color = '#4caf50';
-                    contentEl.innerHTML = `
+        try {
+            const response = await fetch('/exports/ecomail/bulk', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    list_id: parseInt(selectedListId)
+                })
+            });
+
+            const result = await response.json();
+
+            // Show results modal
+            const resultsModal = document.getElementById('bulkExportResultsModal');
+            const titleEl = document.getElementById('bulkExportResultsTitle');
+            const contentEl = document.getElementById('bulkExportResultsContent');
+
+            if (result.success) {
+                titleEl.innerHTML = '✓ Export úspěšný!';
+                titleEl.style.color = '#4caf50';
+                contentEl.innerHTML = `
                     <div style="line-height: 1.8;">
                         <p><strong>📊 Statistiky exportu:</strong></p>
                         <ul style="list-style: none; padding-left: 0;">
@@ -201,47 +202,6 @@
                         </ul>
                     </div>
                 `;
-                } else {
-                    titleEl.innerHTML = '✗ Chyba při exportu';
-                    titleEl.style.color = '#f44336';
-                    contentEl.innerHTML = `<p style="color: #f44336;">${result.error}</p>`;
-                }
-
-                resultsModal.style.display = 'flex';
-                resultsModal.offsetHeight;
-                resultsModal.classList.add('active');
-
-            } catch (error) {
-                console.error('Error during bulk export:', error);
-                alert('✗ Neočekávaná chyba při exportu.');
-            } finally {
-                btn.disabled = false;
-                btn.innerHTML = '📤 Exportovat do Ecomail';
-            }
-        }
-
-        function closeBulkExportResultsModal() {
-            const modal = document.getElementById('bulkExportResultsModal');
-            modal.classList.remove('active');
-            setTimeout(() => {
-                modal.style.display = 'none';
-            }, 200);
-        }
-
-        function exportToCSV() {
-            const status = document.getElementById('exportStatus').value;
-            let url = '/export/csv';
-            if (status) {
-                url += `?status=${encodeURIComponent(status)}`;
-            }
-            window.location.href = url;
-        }
-</script>
-
-<!-- Bulk Export Confirmation Modal -->
-<div id="bulkExportModal" class="modal-overlay">
-    <div class="modal">
-        <div class="modal-title">Potvrzení hromadného exportu</div>
         <div class="modal-body">
             <p id="bulkExportConfirmMsg"></p>
         </div>
@@ -249,20 +209,20 @@
             <button onclick="closeBulkExportModal()" class="btn btn-secondary">Zrušit</button>
             <button onclick="confirmBulkExport()" class="btn btn-primary">Potvrdit</button>
         </div>
-    </div>
-</div>
+    </div >
+</div >
 
-<!-- Bulk Export Results Modal -->
-<div id="bulkExportResultsModal" class="modal-overlay">
-    <div class="modal">
-        <div class="modal-title" id="bulkExportResultsTitle">Výsledky exportu</div>
-        <div class="modal-body">
-            <div id="bulkExportResultsContent"></div>
-        </div>
-        <div class="modal-actions">
-            <button onclick="closeBulkExportResultsModal()" class="btn btn-primary">Zavřít</button>
-        </div>
-    </div>
-</div>
+                    <!-- Bulk Export Results Modal -->
+                    <div id="bulkExportResultsModal" class="modal-overlay">
+                        <div class="modal">
+                            <div class="modal-title" id="bulkExportResultsTitle">Výsledky exportu</div>
+                            <div class="modal-body">
+                                <div id="bulkExportResultsContent"></div>
+                            </div>
+                            <div class="modal-actions">
+                                <button onclick="closeBulkExportResultsModal()" class="btn btn-primary">Zavřít</button>
+                            </div>
+                        </div>
+                    </div>
 
-{% endblock %}
+                {% endblock %}
