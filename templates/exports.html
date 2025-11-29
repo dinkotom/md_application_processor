@@ -202,6 +202,47 @@
                         </ul>
                     </div>
                 `;
+            } else {
+                titleEl.innerHTML = '✗ Chyba při exportu';
+                titleEl.style.color = '#f44336';
+                contentEl.innerHTML = `<p style="color: #f44336;">${result.error}</p>`;
+            }
+
+            resultsModal.style.display = 'flex';
+            resultsModal.offsetHeight;
+            resultsModal.classList.add('active');
+
+        } catch (error) {
+            console.error('Error during bulk export:', error);
+            alert('✗ Neočekávaná chyba při exportu.');
+        } finally {
+            btn.disabled = false;
+            btn.innerHTML = '📤 Exportovat do Ecomail';
+        }
+    }
+
+    function closeBulkExportResultsModal() {
+        const modal = document.getElementById('bulkExportResultsModal');
+        modal.classList.remove('active');
+        setTimeout(() => {
+            modal.style.display = 'none';
+        }, 200);
+    }
+
+    function exportToCSV() {
+        const status = document.getElementById('exportStatus').value;
+        let url = '/export/csv';
+        if (status) {
+            url += `?status=${encodeURIComponent(status)}`;
+        }
+        window.location.href = url;
+    }
+</script>
+
+<!-- Bulk Export Confirmation Modal -->
+<div id="bulkExportModal" class="modal-overlay">
+    <div class="modal">
+        <div class="modal-title">Potvrzení hromadného exportu</div>
         <div class="modal-body">
             <p id="bulkExportConfirmMsg"></p>
         </div>
@@ -209,20 +250,20 @@
             <button onclick="closeBulkExportModal()" class="btn btn-secondary">Zrušit</button>
             <button onclick="confirmBulkExport()" class="btn btn-primary">Potvrdit</button>
         </div>
-    </div >
-</div >
+    </div>
+</div>
 
-                    <!-- Bulk Export Results Modal -->
-                    <div id="bulkExportResultsModal" class="modal-overlay">
-                        <div class="modal">
-                            <div class="modal-title" id="bulkExportResultsTitle">Výsledky exportu</div>
-                            <div class="modal-body">
-                                <div id="bulkExportResultsContent"></div>
-                            </div>
-                            <div class="modal-actions">
-                                <button onclick="closeBulkExportResultsModal()" class="btn btn-primary">Zavřít</button>
-                            </div>
-                        </div>
-                    </div>
+<!-- Bulk Export Results Modal -->
+<div id="bulkExportResultsModal" class="modal-overlay">
+    <div class="modal">
+        <div class="modal-title" id="bulkExportResultsTitle">Výsledky exportu</div>
+        <div class="modal-body">
+            <div id="bulkExportResultsContent"></div>
+        </div>
+        <div class="modal-actions">
+            <button onclick="closeBulkExportResultsModal()" class="btn btn-primary">Zavřít</button>
+        </div>
+    </div>
+</div>
 
-                {% endblock %}
+{% endblock %}
