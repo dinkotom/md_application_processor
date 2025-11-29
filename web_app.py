@@ -1380,24 +1380,16 @@ def bulk_export_to_ecomail():
     try:
         data = request.get_json()
         list_id = data.get('list_id')
-        status_filter = data.get('status_filter', '')
         
         if not list_id:
             return jsonify({'success': False, 'error': 'List ID is required'})
         
-        # Get applicants to export
+        # Get all applicants (not deleted)
         conn = sqlite3.connect(get_db_path())
         conn.row_factory = sqlite3.Row
         cursor = conn.cursor()
         
-        if status_filter:
-            cursor.execute('''
-                SELECT * FROM applicants 
-                WHERE deleted = 0 AND status = ? 
-                ORDER BY id DESC
-            ''', (status_filter,))
-        else:
-            cursor.execute('SELECT * FROM applicants WHERE deleted = 0 ORDER BY id DESC')
+        cursor.execute('SELECT * FROM applicants WHERE deleted = 0 ORDER BY id DESC')
         
         applicants = cursor.fetchall()
         conn.close()

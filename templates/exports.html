@@ -33,24 +33,13 @@
     <!-- Ecomail Export Section -->
     <div class="stat-card">
         <h3>📧 Hromadný export do Ecomail</h3>
-        <p style="color: #666; margin-bottom: 1.5rem;">Exportujte více uchazečů najednou do Ecomailu.</p>
+        <p style="color: #666; margin-bottom: 1.5rem;">Exportujte všechny uchazeče najednou do Ecomailu.</p>
 
         <div style="margin-bottom: 1rem;">
             <label style="display: block; margin-bottom: 0.5rem; font-weight: 500;">Vyberte cílový seznam:</label>
             <select id="ecomailListId"
                 style="width: 100%; padding: 0.5rem; border: 1px solid #ddd; border-radius: 4px;">
                 <option value="">Načítám seznamy...</option>
-            </select>
-        </div>
-
-        <div style="margin-bottom: 1rem;">
-            <label style="display: block; margin-bottom: 0.5rem; font-weight: 500;">Filtrovat podle statusu:</label>
-            <select id="ecomailExportStatus"
-                style="width: 100%; padding: 0.5rem; border: 1px solid #ddd; border-radius: 4px;">
-                <option value="">Všechny přihlášky</option>
-                <option value="Schválená">Pouze schválené</option>
-                <option value="Nová">Pouze nové</option>
-                <option value="Náhradník">Pouze náhradníky</option>
             </select>
         </div>
 
@@ -138,7 +127,6 @@
 
     async function bulkExportToEcomail() {
         const listId = document.getElementById('ecomailListId').value;
-        const status = document.getElementById('ecomailExportStatus').value;
         const btn = document.getElementById('bulkExportBtn');
 
         if (!listId) {
@@ -148,8 +136,7 @@
 
         // Confirm action
         const listName = document.getElementById('ecomailListId').selectedOptions[0].textContent;
-        const statusText = status || 'všechny přihlášky';
-        const confirmMsg = `Opravdu chcete exportovat ${statusText} do seznamu "${listName}"?\n\nStav odběru existujících kontaktů zůstane zachován.`;
+        const confirmMsg = `Opravdu chcete exportovat všechny uchazeče do seznamu "${listName}"?\n\nStav odběru existujících kontaktů zůstane zachován.`;
 
         if (!confirm(confirmMsg)) {
             return;
@@ -166,8 +153,7 @@
                     'Content-Type': 'application/json'
                 },
                 body: JSON.stringify({
-                    list_id: parseInt(listId),
-                    status_filter: status
+                    list_id: parseInt(listId)
                 })
             });
 
