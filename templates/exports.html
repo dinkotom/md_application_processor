@@ -35,15 +35,35 @@
         <h3>📧 Hromadný export do Ecomail</h3>
         <p style="color: #666; margin-bottom: 1.5rem;">Exportujte více uchazečů najednou do Ecomailu.</p>
 
-        <div style="background: #f8f9fa; padding: 1rem; border-radius: 4px; margin-bottom: 1rem;">
-            <p style="margin: 0; color: #666; font-size: 0.9em;">
-                ℹ️ Tato funkce je momentálně ve vývoji. Pro export jednotlivých uchazečů použijte tlačítko na detailní
-                stránce.
+        <div style="margin-bottom: 1rem;">
+            <label style="display: block; margin-bottom: 0.5rem; font-weight: 500;">Vyberte cílový seznam:</label>
+            <select id="ecomailListId"
+                style="width: 100%; padding: 0.5rem; border: 1px solid #ddd; border-radius: 4px;">
+                <option value="">Načítám seznamy...</option>
+            </select>
+        </div>
+
+        <div style="margin-bottom: 1rem;">
+            <label style="display: block; margin-bottom: 0.5rem; font-weight: 500;">Filtrovat podle statusu:</label>
+            <select id="ecomailExportStatus"
+                style="width: 100%; padding: 0.5rem; border: 1px solid #ddd; border-radius: 4px;">
+                <option value="">Všechny přihlášky</option>
+                <option value="Schválená">Pouze schválené</option>
+                <option value="Nová">Pouze nové</option>
+                <option value="Náhradník">Pouze náhradníky</option>
+            </select>
+        </div>
+
+        <div
+            style="background: #e3f2fd; padding: 1rem; border-radius: 4px; margin-bottom: 1rem; border-left: 3px solid #2196f3;">
+            <p style="margin: 0; color: #1565c0; font-size: 0.9em;">
+                ℹ️ <strong>Poznámka:</strong> Export <strong>nikdy nezmění</strong> stav odběru
+                (subscribed/unsubscribed) existujících kontaktů.
             </p>
         </div>
 
-        <button class="btn btn-secondary" style="width: 100%;" disabled>
-            📤 Hromadný export (brzy)
+        <button onclick="bulkExportToEcomail()" class="btn btn-primary" style="width: 100%;" id="bulkExportBtn">
+            📤 Exportovat do Ecomail
         </button>
     </div>
 </div>
@@ -85,6 +105,90 @@
 </style>
 
 <script>
+    // Load Ecomail lists on page load
+    document.addEventListener('DOMContentLoaded', function () {
+        loadEcomailLists();
+    });
+
+    async function loadEcomailLists() {
+        try {
+            const response = await fetch('/exports/ecomail/lists');
+            const data = await response.json();
+
+            const select = document.getElementById('ecomailListId');
+            select.innerHTML = '';
+
+            if (data.success && data.lists && data.lists.length > 0) {
+                data.lists.forEach(list => {
+                    const option = document.createElement('option');
+                    option.value = list.id;
+                    option.textContent = `${list.name} (${list.subscriber_count || 0} kontaktů)`;
+                    select.appendChild(option);
+                });
+            } else {
+                select.innerHTML = '<option value="">Nelze načíst seznamy</option>';
+                console.error('Failed to load Ecomail lists:', data.error);
+            }
+        } catch (error) {
+            console.error('Error loading Ecomail lists:', error);
+            const select = document.getElementById('ecomailListId');
+            select.innerHTML = '<option value="">Chyba načítání seznamů</option>';
+        }
+    }
+
+    async function bulkExportToEcomail() {
+        const listId = document.getElementById('ecomailListId').value;
+        const status = document.getElementById('ecomailExportStatus').value;
+        const btn = document.getElementById('bulkExportBtn');
+
+        if (!listId) {
+            alert('Prosím vyberte cílový seznam v Ecomailu.');
+            return;
+        }
+
+        // Confirm action
+        const listName = document.getElementById('ecomailListId').selectedOptions[0].textContent;
+        const statusText = status || 'všechny přihlášky';
+        const confirmMsg = `Opravdu chcete exportovat ${statusText} do seznamu "${listName}"?\n\nStav odběru existujících kontaktů zůstane zachován.`;
+
+        if (!confirm(confirmMsg)) {
+            return;
+        }
+
+        // Disable button and show loading state
+        btn.disabled = true;
+        btn.innerHTML = '⏳ Exportuji...';
+
+        try {
+            const response = await fetch('/exports/ecomail/bulk', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    list_id: parseInt(listId),
+                    status_filter: status
+                })
+            });
+
+            const result = await response.json();
+
+            if (result.success) {
+                alert(`✓ Export úspěšný!\n\nNové kontakty: ${result.created}\nAktualizované kontakty: ${result.updated}\nChyby: ${result.errors}`);
+                btn.innerHTML = '📤 Exportovat do Ecomail';
+            } else {
+                alert(`✗ Chyba při exportu: ${result.error}`);
+                btn.innerHTML = '📤 Exportovat do Ecomail';
+            }
+        } catch (error) {
+            console.error('Error during bulk export:', error);
+            alert('✗ Neočekávaná chyba při exportu.');
+            btn.innerHTML = '📤 Exportovat do Ecomail';
+        } finally {
+            btn.disabled = false;
+        }
+    }
+
     function exportToCSV() {
         const status = document.getElementById('exportStatus').value;
         let url = '/export/csv';
