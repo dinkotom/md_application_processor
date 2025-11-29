@@ -36,8 +36,8 @@ DB_PATH_TEST = 'applications_test.db'
 DB_PATH_PROD = 'applications.db'
 
 # Ecomail configuration
-ECOMAIL_LIST_ID_TEST = 16
-ECOMAIL_LIST_ID_PROD = 17
+ECOMAIL_LIST_ID_TEST = 17
+ECOMAIL_LIST_ID_PROD = 16
 
 VERSION = "1.2"
 
