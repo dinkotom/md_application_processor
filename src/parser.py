@@ -86,7 +86,10 @@ def parse_csv_row(row: Dict[str, str]) -> Dict[str, str]:
         ''
     ).strip()
     
-    newsletter_value = 1 if not newsletter_text else 0
+    if newsletter_text.lower() == 'ano':
+        newsletter_value = 1
+    else:
+        newsletter_value = 1 if not newsletter_text else 0
     
     return {
         'first_name': row.get('jmeno', '').strip(),

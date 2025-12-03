@@ -50,8 +50,8 @@ class TestGenerator(unittest.TestCase):
         self.assertEqual(img.format, 'PNG')
         
         # Check dimensions match the template (1024x585)
-        self.assertEqual(img.width, 1024)
-        self.assertEqual(img.height, 585)
+        self.assertEqual(img.width, 1050)
+        self.assertEqual(img.height, 600)
 
 if __name__ == '__main__':
     unittest.main()

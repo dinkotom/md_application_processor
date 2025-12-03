@@ -72,6 +72,10 @@ class TestWebApp(unittest.TestCase):
         import web_app
         self.original_get_db_path = web_app.get_db_path
         web_app.get_db_path = lambda: self.db_path
+        
+        # Simulate logged-in user
+        with self.client.session_transaction() as sess:
+            sess['user'] = {'email': 'test@example.com', 'name': 'Test User'}
 
     def tearDown(self):
         # Restore original function

@@ -1,4 +1,18 @@
-## [1.4] - 2025-11-29
+## [1.4] - 2025-12-03
+
+### Změněno
+- **UI Navigace**: Kompletní refaktoring navigační lišty
+  - Oddělení přihlašovacích prvků od hlavní navigace
+  - Přesun uživatelského jména a tlačítka odhlášení doprava
+  - Zmenšení písma uživatelského jména a jeho umístění pod tlačítko odhlášení
+  - Responzivní chování pro menší obrazovky
+- **OAuth Konfigurace**: Povolení `OAUTHLIB_INSECURE_TRANSPORT` pro vývojové prostředí (localhost)
+  - Oprava chyby `MismatchingStateError` při přihlašování
+  - Úprava nastavení session cookies (SameSite=Lax)
+
+---
+
+## [1.3] - 2025-11-29
 
 ### Přidáno
 - **Integrace Ecomail API**: Plná integrace s Ecomail pro správu kontaktů

@@ -44,7 +44,7 @@ Nesouhlas se zasíláním novinek: Nesouhlasím se zasíláním novinek formou n
         self.assertEqual(data['source'], 'Ve škole')
         self.assertEqual(data['color'], 'Zelená')
         self.assertEqual(data['membership_id'], '1954')
-        self.assertTrue(data['newsletter'].startswith('Nesouhlasím'))
+        self.assertEqual(data['newsletter'], 0)
 
     def test_parse_csv_row(self):
         row = {
@@ -83,7 +83,7 @@ Nesouhlas se zasíláním novinek: Nesouhlasím se zasíláním novinek formou n
         self.assertEqual(data['source_detail'], 'Facebook')
         self.assertEqual(data['message'], 'Ahoj')
         self.assertEqual(data['color'], 'Modrá')
-        self.assertEqual(data['newsletter'], 'Ano')
+        self.assertEqual(data['newsletter'], 1)
         self.assertEqual(data['full_body'], '')
 
 if __name__ == '__main__':

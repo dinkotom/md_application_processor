@@ -9,6 +9,8 @@ import sqlite3
 import os
 from datetime import datetime
 from dotenv import load_dotenv
+from authlib.integrations.flask_client import OAuth
+from functools import wraps
 
 load_dotenv()
 
@@ -28,6 +30,28 @@ logger = logging.getLogger(__name__)
 app = Flask(__name__)
 app.secret_key = os.environ.get('SECRET_KEY', 'dev-secret-key-change-in-production')
 
+# Allow OAuth over HTTP for development
+os.environ['OAUTHLIB_INSECURE_TRANSPORT'] = '1'
+
+# Session configuration
+app.config.update(
+    SESSION_COOKIE_SECURE=False,
+    SESSION_COOKIE_HTTPONLY=True,
+    SESSION_COOKIE_SAMESITE='Lax',
+)
+
+# OAuth Configuration
+oauth = OAuth(app)
+google = oauth.register(
+    name='google',
+    client_id=os.environ.get('GOOGLE_CLIENT_ID'),
+    client_secret=os.environ.get('GOOGLE_CLIENT_SECRET'),
+    server_metadata_url='https://accounts.google.com/.well-known/openid-configuration',
+    client_kwargs={
+        'scope': 'openid email profile'
+    }
+)
+
 # Database configuration
 from flask import session
 
@@ -39,7 +63,7 @@ DB_PATH_PROD = 'applications.db'
 ECOMAIL_LIST_ID_TEST = 17
 ECOMAIL_LIST_ID_PROD = 16
 
-VERSION = "1.2"
+VERSION = "1.4"
 
 def init_db(db_path):
     """Initialize database with schema if it doesn't exist"""
@@ -126,12 +150,22 @@ def get_db_connection():
     conn.row_factory = sqlite3.Row
     return conn
 
+def login_required(f):
+    """Decorator to require login for routes"""
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        if 'user' not in session:
+            return redirect(url_for('login'))
+        return f(*args, **kwargs)
+    return decorated_function
+
 @app.context_processor
 def inject_mode():
     """Inject current mode into templates"""
     return dict(current_mode=session.get('mode', 'test'), version=VERSION)
 
 @app.route('/switch_mode/<mode>')
+@login_required
 def switch_mode(mode):
     """Switch between test and production mode"""
     if mode in ['test', 'production']:
@@ -199,6 +233,52 @@ def slugify_status(status):
     return s
 
 app.jinja_env.filters['slugify_status'] = slugify_status
+
+@app.route('/login')
+def login():
+    """Login page"""
+    if 'user' in session:
+        return redirect(url_for('index'))
+    return render_template('login.html')
+
+@app.route('/login/google')
+def login_google():
+    """Redirect to Google OAuth"""
+    redirect_uri = url_for('authorized', _external=True)
+    return google.authorize_redirect(redirect_uri)
+
+@app.route('/login/google/authorized')
+def authorized():
+    """Google OAuth callback"""
+    token = google.authorize_access_token()
+    user_info = token.get('userinfo')
+    
+    if user_info:
+        email = user_info.get('email')
+        
+        # Check if email is allowed
+        allowed_emails = os.environ.get('ALLOWED_EMAILS', '').split(',')
+        allowed_emails = [e.strip().lower() for e in allowed_emails if e.strip()]
+        
+        if allowed_emails and email.lower() not in allowed_emails:
+            logger.warning(f"Unauthorized login attempt: {email}")
+            return render_template('login.html', error=f"Access denied. Your email ({email}) is not authorized."), 403
+        
+        session['user'] = {
+            'email': email,
+            'name': user_info.get('name'),
+            'picture': user_info.get('picture')
+        }
+        logger.info(f"User logged in: {email}")
+    
+    return redirect(url_for('index'))
+
+@app.route('/logout')
+def logout():
+    """Logout user"""
+    session.pop('user', None)
+    logger.info("User logged out")
+    return redirect(url_for('login'))
 
 @app.route('/favicon.ico')
 def favicon():
@@ -326,6 +406,7 @@ def get_filtered_applicants(request_args):
     return all_applicants
 
 @app.route('/')
+@login_required
 def index():
     """Main dashboard page"""
     # Get filter parameters for template context
@@ -415,6 +496,7 @@ def index():
                          total=len(applicants_with_age))
 
 @app.route('/fetch/preview', methods=['POST'])
+@login_required
 def fetch_preview():
     """Preview email applications and detect duplicates"""
     from src.fetcher import get_unread_emails
@@ -474,6 +556,7 @@ def fetch_preview():
         return jsonify({'error': str(e)}), 500
 
 @app.route('/fetch/confirm', methods=['POST'])
+@login_required
 def fetch_confirm():
     """Confirm and execute email import"""
     from src.validator import record_applicant
@@ -532,6 +615,7 @@ def fetch_confirm():
     return redirect(url_for('index'))
 
 @app.route('/applicant/<int:id>')
+@login_required
 def applicant_detail(id):
     """Applicant detail page"""
     conn = get_db_connection()
@@ -624,6 +708,7 @@ def applicant_detail(id):
     return render_template('detail.html', applicant=app_dict, back_args=back_args, prev_id=prev_id, next_id=next_id, current_mode=current_mode, ecomail_list_name=ecomail_list_name)
 
 @app.route('/applicant/<int:id>/card')
+@login_required
 def applicant_card(id):
     """Generate and serve membership card image"""
     from flask import send_file
@@ -666,6 +751,7 @@ def applicant_card(id):
     )
 
 @app.route('/applicant/<int:id>/card_preview')
+@login_required
 def serve_card_preview(id):
     """Generate and serve membership card preview (not as download)"""
     from flask import send_file
@@ -690,6 +776,7 @@ def serve_card_preview(id):
 
 
 @app.route('/stats')
+@login_required
 def stats():
     """Statistics page"""
     conn = get_db_connection()
@@ -758,6 +845,7 @@ def stats():
                          sources=sorted(sources.items(), key=lambda x: x[1], reverse=True))
 
 @app.route('/advanced')
+@login_required
 def advanced():
     """Advanced settings page"""
     from src.ecomail import EcomailClient
@@ -784,6 +872,7 @@ def advanced():
 
 # Soft delete endpoint
 @app.route('/applicant/<int:id>/delete', methods=['POST'])
+@login_required
 def delete_applicant(id):
     """Soft delete an applicant by setting deleted flag"""
     conn = get_db_connection()
@@ -793,6 +882,7 @@ def delete_applicant(id):
     return redirect(url_for('index'))
 
 @app.route('/applicant/<int:id>/update', methods=['POST'])
+@login_required
 def update_applicant(id):
     """Update applicant details"""
     conn = get_db_connection()
@@ -815,6 +905,7 @@ def update_applicant(id):
     return redirect(url_for('index'))
 
 @app.route('/applicant/<int:id>/update_status', methods=['POST'])
+@login_required
 def update_applicant_status(id):
     """Update applicant status only"""
     conn = get_db_connection()
@@ -830,6 +921,7 @@ def update_applicant_status(id):
     return redirect(url_for('index'))
 
 @app.route('/applicant/<int:id>/update_field', methods=['POST'])
+@login_required
 def update_applicant_field(id):
     """Update a single field of an applicant via AJAX"""
     data = request.get_json()
@@ -853,6 +945,7 @@ def update_applicant_field(id):
         conn.close()
 
 @app.route('/applicant/<int:id>/update_note', methods=['POST'])
+@login_required
 def update_applicant_note(id):
     """Update applicant note"""
     if request.is_json:
@@ -874,6 +967,7 @@ def update_applicant_note(id):
         conn.close()
 
 @app.route('/applicant/<int:id>/dismiss_parent_warning', methods=['POST'])
+@login_required
 def dismiss_parent_warning(id):
     """Dismiss parent email warning for an applicant"""
     conn = get_db_connection()
@@ -884,6 +978,7 @@ def dismiss_parent_warning(id):
     return redirect(url_for('applicant_detail', id=id))
 
 @app.route('/applicant/<int:id>/dismiss_duplicate_warning', methods=['POST'])
+@login_required
 def dismiss_duplicate_warning(id):
     """Dismiss duplicate contact warning for an applicant"""
     conn = get_db_connection()
@@ -894,6 +989,7 @@ def dismiss_duplicate_warning(id):
     return redirect(url_for('applicant_detail', id=id))
 
 @app.route('/applicant/<int:id>/qr')
+@login_required
 def qr_code(id):
     """Generate QR code on-the-fly for an applicant"""
     from flask import send_file
@@ -912,6 +1008,7 @@ def qr_code(id):
     return send_file(qr_bytes, mimetype='image/png')
 
 @app.route('/applicant/<int:id>/export_to_ecomail', methods=['POST'])
+@login_required
 def export_applicant_to_ecomail(id):
     """Export applicant to Ecomail"""
     from src.ecomail import EcomailClient
@@ -1006,6 +1103,7 @@ def export_applicant_to_ecomail(id):
         return jsonify({'success': False, 'error': str(e)}), 500
 
 @app.route('/ecomail/subscriber', methods=['POST'])
+@login_required
 def lookup_subscriber():
     """Lookup subscriber in Ecomail"""
     from src.ecomail import EcomailClient
@@ -1023,6 +1121,7 @@ def lookup_subscriber():
         return jsonify({'success': False, 'error': str(e)}), 500
 
 @app.route('/import/preview', methods=['POST'])
+@login_required
 def import_preview():
     """Preview CSV import and detect duplicates"""
     from flask import session
@@ -1076,6 +1175,7 @@ def import_preview():
     return jsonify(session['import_stats'])
 
 @app.route('/import/confirm', methods=['POST'])
+@login_required
 def import_confirm():
     """Confirm and execute CSV import"""
     from flask import session
@@ -1124,6 +1224,7 @@ def import_confirm():
         session.pop('import_stats', None)
 
 @app.route('/clear_db', methods=['POST'])
+@login_required
 def clear_database():
     """Clear database (Test mode only)"""
     mode = session.get('mode', 'test')
@@ -1143,6 +1244,7 @@ def clear_database():
     return redirect(url_for('index'))
 
 @app.route('/email/template', methods=['GET'])
+@login_required
 def get_email_template():
     """Get current email template"""
     conn = get_db_connection()
@@ -1161,6 +1263,7 @@ def get_email_template():
         })
 
 @app.route('/email/template', methods=['POST'])
+@login_required
 def save_email_template():
     """Save email template"""
     subject = request.form.get('subject', '')
@@ -1181,6 +1284,7 @@ def save_email_template():
     return jsonify({'success': True, 'message': 'Template saved successfully'})
 
 @app.route('/applicant/<int:id>/email/preview', methods=['POST'])
+@login_required
 def preview_email(id):
     """Preview email for applicant"""
     from src.email_sender import preview_email as generate_preview
@@ -1204,6 +1308,7 @@ def preview_email(id):
     return jsonify(preview)
 
 @app.route('/applicant/<int:id>/email/send', methods=['POST'])
+@login_required
 def send_email(id):
     """Send email with membership card to applicant"""
     from src.email_sender import send_email_with_card
@@ -1260,6 +1365,7 @@ def send_email(id):
     return jsonify(result)
 
 @app.route('/changelog')
+@login_required
 def get_changelog():
     """Get changelog content"""
     from src.changelog import get_changelog as read_changelog
