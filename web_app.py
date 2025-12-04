@@ -845,6 +845,14 @@ def stats():
                          interests=sorted(interests_count.items(), key=lambda x: x[1], reverse=True)[:10],
                          sources=sorted(sources.items(), key=lambda x: x[1], reverse=True))
 
+
+@app.route('/exports')
+def exports():
+    """Exports page for CSV and other export functions"""
+    return render_template('exports.html', 
+                         version=VERSION, 
+                         current_mode=session.get('mode', 'test'))
+
 @app.route('/advanced')
 @login_required
 def advanced():
@@ -1376,6 +1384,213 @@ def get_changelog():
     changelog_html = markdown.markdown(changelog_md, extensions=['fenced_code', 'tables'])
     
     return jsonify({'content': changelog_html})
+
+@app.route('/export/csv')
+def export_csv():
+    """Export applicants to CSV file"""
+    import csv
+    import io
+    from flask import make_response
+    
+    # Get status filter from query params
+    status_filter = request.args.get('status', '')
+    
+    # Get all applicants from database
+    conn = sqlite3.connect(get_db_path())
+    conn.row_factory = sqlite3.Row
+    cursor = conn.cursor()
+    
+    if status_filter:
+        cursor.execute('SELECT * FROM applicants WHERE deleted = 0 AND status = ? ORDER BY id DESC', (status_filter,))
+    else:
+        cursor.execute('SELECT * FROM applicants WHERE deleted = 0 ORDER BY id DESC')
+    
+    applicants = cursor.fetchall()
+    conn.close()
+    
+    # Create CSV in memory
+    output = io.StringIO()
+    writer = csv.writer(output)
+    
+    # Write header
+    writer.writerow([
+        'ID', 'Jméno', 'Příjmení', 'Email', 'Telefon', 'Datum narození',
+        'Členské číslo', 'Město', 'Škola', 'Zájmy', 'Povaha', 'Frekvence',
+        'Zdroj', 'Detail zdroje', 'Vzkaz', 'Barva', 'Newsletter', 'Status',
+        'Vytvořeno', 'Přihláška přijata'
+    ])
+    
+    # Write data rows
+    for app in applicants:
+        writer.writerow([
+            app['id'],
+            app['first_name'],
+            app['last_name'],
+            app['email'],
+            app['phone'],
+            app['dob'],
+            app['membership_id'],
+            app['city'],
+            app['school'],
+            app['interests'],
+            app['character'],
+            app['frequency'],
+            app['source'],
+            app['source_detail'],
+            app['message'],
+            app['color'],
+            'Ano' if app['newsletter'] == 1 else 'Ne',
+            app['status'],
+            app['created_at'],
+            app.get('application_received', '')
+        ])
+    
+    # Create response
+    output.seek(0)
+    response = make_response(output.getvalue())
+    response.headers['Content-Disposition'] = f'attachment; filename=prihlasky_{status_filter if status_filter else "vsechny"}.csv'
+    response.headers['Content-Type'] = 'text/csv; charset=utf-8'
+    
+    return response
+
+@app.route('/exports/ecomail/lists')
+def get_ecomail_lists_for_export():
+    """Get Ecomail lists for bulk export dropdown"""
+    from src.ecomail import EcomailClient
+    
+    try:
+        client = EcomailClient()
+        result = client.get_lists()
+        
+        if result['success']:
+            return jsonify({
+                'success': True,
+                'lists': result.get('data', [])
+            })
+        else:
+            return jsonify({
+                'success': False,
+                'error': result.get('error', 'Failed to fetch lists')
+            })
+    except Exception as e:
+        logger.error(f"Error fetching Ecomail lists for export: {e}")
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        })
+
+@app.route('/exports/ecomail/bulk', methods=['POST'])
+def bulk_export_to_ecomail():
+    """Bulk export applicants to Ecomail"""
+    from src.ecomail import EcomailClient
+    
+    try:
+        data = request.get_json()
+        list_id = data.get('list_id')
+        
+        if not list_id:
+            return jsonify({'success': False, 'error': 'List ID is required'})
+        
+        # Get all applicants (not deleted)
+        conn = sqlite3.connect(get_db_path())
+        conn.row_factory = sqlite3.Row
+        cursor = conn.cursor()
+        
+        cursor.execute('SELECT * FROM applicants WHERE deleted = 0 ORDER BY id DESC')
+        
+        applicants = cursor.fetchall()
+        conn.close()
+        
+        if not applicants:
+            return jsonify({
+                'success': False,
+                'error': 'Žádné přihlášky k exportu'
+            })
+        
+        # Initialize Ecomail client
+        client = EcomailClient()
+        
+        created_count = 0
+        updated_count = 0
+        error_count = 0
+        
+        # Export each applicant
+        for app in applicants:
+            try:
+                # Prepare subscriber data
+                tags = []
+                if app['interests']:
+                    # Split by comma and strip whitespace
+                    interest_tags = [i.strip() for i in app['interests'].split(',')]
+                    # Ensure no commas remain in individual tags (replace with hyphen if any)
+                    interest_tags = [t.replace(',', ' -') for t in interest_tags if t]
+                    tags.extend(interest_tags)
+                if app['source']:
+                    # Replace comma with hyphen in source tag
+                    source_val = app['source'].replace(',', ' -')
+                    tags.append(f"Zdroj: {source_val}")
+                
+                # Final safety check: remove any remaining commas from all tags
+                tags = [t.replace(',', ' -') for t in tags]
+                
+                subscriber_data = {
+                    'email': app['email'],
+                    'name': f"{app['first_name']} {app['last_name']}",
+                    'surname': app['last_name'],
+                    'vokativ': app['first_name'],
+                    'tags': tags
+                }
+                
+                # Add custom fields if present
+                if app['membership_id']:
+                    subscriber_data['CLENSKE_CISLO'] = app['membership_id']
+                if app['city']:
+                    subscriber_data['city'] = app['city']
+                if app['phone']:
+                    subscriber_data['phone'] = app['phone']
+                
+                # Check if subscriber exists
+                existing = client.get_subscriber(app['email'])
+                is_update = existing.get('success') and existing.get('data')
+                
+                # For new subscribers, use their newsletter consent from database
+                # For existing subscribers, pass None to preserve their current status
+                newsletter_status_param = None if is_update else (app['newsletter'] if app['newsletter'] is not None else 1)
+                
+                # Create/update subscriber
+                result = client.create_subscriber(
+                    list_id, 
+                    subscriber_data, 
+                    newsletter_status=newsletter_status_param
+                )
+                
+                if result['success']:
+                    if is_update:
+                        updated_count += 1
+                    else:
+                        created_count += 1
+                else:
+                    error_count += 1
+                    logger.warning(f"Failed to export applicant {app['id']}: {result.get('error')}")
+                    
+            except Exception as e:
+                error_count += 1
+                logger.error(f"Error exporting applicant {app['id']}: {e}")
+        
+        return jsonify({
+            'success': True,
+            'created': created_count,
+            'updated': updated_count,
+            'errors': error_count,
+            'total': len(applicants)
+        })
+        
+    except Exception as e:
+        logger.error(f"Bulk export error: {e}")
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        })
 
 if __name__ == '__main__':
     # Initialize databases

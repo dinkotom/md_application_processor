@@ -333,9 +333,10 @@ class EcomailClient:
                 'resubscribe': False  # Default to False to preserve status on update
             }
             
-            if not is_update:
+            if not is_update and newsletter_status is not None:
                 # New subscriber: set status based on newsletter consent
                 # 1 = subscribed, 2 = unsubscribed
+                # Only set status if newsletter_status is provided (not None)
                 status_code = 1 if newsletter_status == 1 else 2
                 subscriber_data['status'] = status_code
                 

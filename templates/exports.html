@@ -1,0 +1,269 @@
+{% extends "base.html" %}
+
+{% block title %}Exporty - Mladý divák{% endblock %}
+
+{% block content %}
+<div class="stats-header">
+    <h2>📦 Exporty</h2>
+    <p class="subtitle">Export přihlášek do různých formátů</p>
+</div>
+
+<div class="stats-grid">
+    <!-- CSV Export Section -->
+    <div class="stat-card">
+        <h3>📄 Export do CSV</h3>
+        <p style="color: #666; margin-bottom: 1.5rem;">Exportujte přihlášky do CSV souboru pro další zpracování.</p>
+
+        <div style="margin-bottom: 1rem;">
+            <label style="display: block; margin-bottom: 0.5rem; font-weight: 500;">Filtrovat podle statusu:</label>
+            <select id="exportStatus" style="width: 100%; padding: 0.5rem; border: 1px solid #ddd; border-radius: 4px;">
+                <option value="">Všechny přihlášky</option>
+                <option value="Nová">Nová</option>
+                <option value="Schválená">Schválená</option>
+                <option value="Zamítnutá">Zamítnutá</option>
+                <option value="Náhradník">Náhradník</option>
+            </select>
+        </div>
+
+        <button onclick="exportToCSV()" class="btn btn-primary" style="width: 100%;">
+            💾 Stáhnout CSV
+        </button>
+    </div>
+
+    <!-- Ecomail Export Section -->
+    <div class="stat-card">
+        <h3>📧 Hromadný export do Ecomail</h3>
+        <p style="color: #666; margin-bottom: 1.5rem;">Exportujte všechny uchazeče najednou do Ecomailu.</p>
+
+        <div style="margin-bottom: 1rem;">
+            <label style="display: block; margin-bottom: 0.5rem; font-weight: 500;">Vyberte cílový seznam:</label>
+            <select id="ecomailListId"
+                style="width: 100%; padding: 0.5rem; border: 1px solid #ddd; border-radius: 4px;">
+                <option value="">Načítám seznamy...</option>
+            </select>
+        </div>
+
+        <div
+            style="background: #e3f2fd; padding: 1rem; border-radius: 4px; margin-bottom: 1rem; border-left: 3px solid #2196f3;">
+            <p style="margin: 0; color: #1565c0; font-size: 0.9em;">
+                ℹ️ <strong>Poznámka:</strong> Export <strong>nikdy nezmění</strong> stav odběru
+                (subscribed/unsubscribed) existujících kontaktů.
+            </p>
+        </div>
+
+        <button onclick="bulkExportToEcomail()" class="btn btn-primary" style="width: 100%;" id="bulkExportBtn">
+            📤 Exportovat do Ecomail
+        </button>
+    </div>
+</div>
+
+<style>
+    .stats-header {
+        margin-bottom: 2rem;
+    }
+
+    .stats-header h2 {
+        margin: 0 0 0.5rem 0;
+        color: #333;
+    }
+
+    .subtitle {
+        color: #666;
+        margin: 0;
+    }
+
+    .stats-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+        gap: 1.5rem;
+        margin-top: 2rem;
+    }
+
+    .stat-card {
+        background: white;
+        padding: 1.5rem;
+        border-radius: 8px;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    }
+
+    .stat-card h3 {
+        margin: 0 0 1rem 0;
+        color: #333;
+        font-size: 1.2em;
+    }
+</style>
+
+<script>
+    // Load Ecomail lists on page load
+    document.addEventListener('DOMContentLoaded', function () {
+        loadEcomailLists();
+    });
+
+    async function loadEcomailLists() {
+        try {
+            const response = await fetch('/exports/ecomail/lists');
+            const data = await response.json();
+
+            const select = document.getElementById('ecomailListId');
+            select.innerHTML = '';
+
+            if (data.success && data.lists && data.lists.length > 0) {
+                data.lists.forEach(list => {
+                    const option = document.createElement('option');
+                    option.value = list.id;
+                    option.textContent = `${list.name} (${list.subscriber_count || 0} kontaktů)`;
+                    select.appendChild(option);
+                });
+            } else {
+                select.innerHTML = '<option value="">Nelze načíst seznamy</option>';
+                console.error('Failed to load Ecomail lists:', data.error);
+            }
+        } catch (error) {
+            console.error('Error loading Ecomail lists:', error);
+            const select = document.getElementById('ecomailListId');
+            select.innerHTML = '<option value="">Chyba načítání seznamů</option>';
+        }
+    }
+
+    let selectedListId = null;
+    let selectedListName = null;
+
+    function bulkExportToEcomail() {
+        const listId = document.getElementById('ecomailListId').value;
+        const btn = document.getElementById('bulkExportBtn');
+
+        if (!listId) {
+            alert('Prosím vyberte cílový seznam v Ecomailu.');
+            return;
+        }
+
+        // Store values and show confirmation modal
+        selectedListId = listId;
+        selectedListName = document.getElementById('ecomailListId').selectedOptions[0].textContent;
+
+        const confirmMsg = `Opravdu chcete exportovat všechny uchazeče do seznamu "${selectedListName}"?\n\nStav odběru existujících kontaktů zůstane zachován.`;
+        document.getElementById('bulkExportConfirmMsg').textContent = confirmMsg;
+
+        // Show modal
+        const modal = document.getElementById('bulkExportModal');
+        modal.style.display = 'flex';
+        modal.offsetHeight; // Trigger reflow
+        modal.classList.add('active');
+    }
+
+    function closeBulkExportModal() {
+        const modal = document.getElementById('bulkExportModal');
+        modal.classList.remove('active');
+        setTimeout(() => {
+            modal.style.display = 'none';
+            selectedListId = null;
+            selectedListName = null;
+        }, 200);
+    }
+
+    async function confirmBulkExport() {
+        closeBulkExportModal();
+
+        const btn = document.getElementById('bulkExportBtn');
+        btn.disabled = true;
+        btn.innerHTML = '⏳ Exportuji...';
+
+        try {
+            const response = await fetch('/exports/ecomail/bulk', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    list_id: parseInt(selectedListId)
+                })
+            });
+
+            const result = await response.json();
+
+            // Show results modal
+            const resultsModal = document.getElementById('bulkExportResultsModal');
+            const titleEl = document.getElementById('bulkExportResultsTitle');
+            const contentEl = document.getElementById('bulkExportResultsContent');
+
+            if (result.success) {
+                titleEl.innerHTML = '✓ Export úspěšný!';
+                titleEl.style.color = '#4caf50';
+                contentEl.innerHTML = `
+                    <div style="line-height: 1.8;">
+                        <p><strong>📊 Statistiky exportu:</strong></p>
+                        <ul style="list-style: none; padding-left: 0;">
+                            <li>✅ Nové kontakty: <strong>${result.created}</strong></li>
+                            <li>🔄 Aktualizované kontakty: <strong>${result.updated}</strong></li>
+                            <li>❌ Chyby: <strong>${result.errors}</strong></li>
+                            <li style="margin-top: 0.5rem; padding-top: 0.5rem; border-top: 1px solid #ddd;">
+                                📧 Celkem zpracováno: <strong>${result.total}</strong>
+                            </li>
+                        </ul>
+                    </div>
+                `;
+            } else {
+                titleEl.innerHTML = '✗ Chyba při exportu';
+                titleEl.style.color = '#f44336';
+                contentEl.innerHTML = `<p style="color: #f44336;">${result.error}</p>`;
+            }
+
+            resultsModal.style.display = 'flex';
+            resultsModal.offsetHeight;
+            resultsModal.classList.add('active');
+
+        } catch (error) {
+            console.error('Error during bulk export:', error);
+            alert('✗ Neočekávaná chyba při exportu.');
+        } finally {
+            btn.disabled = false;
+            btn.innerHTML = '📤 Exportovat do Ecomail';
+        }
+    }
+
+    function closeBulkExportResultsModal() {
+        const modal = document.getElementById('bulkExportResultsModal');
+        modal.classList.remove('active');
+        setTimeout(() => {
+            modal.style.display = 'none';
+        }, 200);
+    }
+
+    function exportToCSV() {
+        const status = document.getElementById('exportStatus').value;
+        let url = '/export/csv';
+        if (status) {
+            url += `?status=${encodeURIComponent(status)}`;
+        }
+        window.location.href = url;
+    }
+</script>
+
+<!-- Bulk Export Confirmation Modal -->
+<div id="bulkExportModal" class="modal-overlay">
+    <div class="modal">
+        <div class="modal-title">Potvrzení hromadného exportu</div>
+        <div class="modal-body">
+            <p id="bulkExportConfirmMsg"></p>
+        </div>
+        <div class="modal-actions">
+            <button onclick="closeBulkExportModal()" class="btn btn-secondary">Zrušit</button>
+            <button onclick="confirmBulkExport()" class="btn btn-primary">Potvrdit</button>
+        </div>
+    </div>
+</div>
+
+<!-- Bulk Export Results Modal -->
+<div id="bulkExportResultsModal" class="modal-overlay">
+    <div class="modal">
+        <div class="modal-title" id="bulkExportResultsTitle">Výsledky exportu</div>
+        <div class="modal-body">
+            <div id="bulkExportResultsContent"></div>
+        </div>
+        <div class="modal-actions">
+            <button onclick="closeBulkExportResultsModal()" class="btn btn-primary">Zavřít</button>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
