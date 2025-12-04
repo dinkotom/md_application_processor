@@ -56,8 +56,9 @@ google = oauth.register(
 from flask import session
 
 # Database configuration
-DB_PATH_TEST = 'applications_test.db'
-DB_PATH_PROD = 'applications.db'
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+DB_PATH_TEST = os.path.join(BASE_DIR, 'applications_test.db')
+DB_PATH_PROD = os.path.join(BASE_DIR, 'applications.db')
 
 # Ecomail configuration
 ECOMAIL_LIST_ID_TEST = 17
