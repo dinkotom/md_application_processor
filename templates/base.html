@@ -17,24 +17,37 @@
 <body>
     <nav class="navbar">
         <div class="container">
-            <a href="{{ url_for('index') }}"
-                style="text-decoration: none; color: inherit; display: flex; align-items: center; gap: 10px;">
-                <h1 class="logo" style="margin: 0; color: var(--accent-color); font-size: 2.5rem; line-height: 1;">md
-                </h1>
-                <span style="font-size: 0.9rem; color: white; opacity: 0.9; margin-top: 5px;">mladý divák <span
-                        style="font-size: 0.7em; opacity: 0.7;">v{{ version }}</span></span>
-                {% if current_mode != 'production' %} <span
-                    style="color: var(--accent-color); font-size: 0.7em; border: 1px solid var(--accent-color); padding: 2px 6px; border-radius: 4px;">TEST</span>{%
-                endif %}
-            </a>
-            <div class="nav-links">
+            <div class="nav-left">
                 <a href="{{ url_for('index') }}"
-                    class="{% if request.endpoint == 'index' %}active{% endif %}">Přihlášky</a>
-                <a href="{{ url_for('stats') }}"
-                    class="{% if request.endpoint == 'stats' %}active{% endif %}">Statistiky</a>
-                <a href="{{ url_for('advanced') }}"
-                    class="{% if request.endpoint == 'advanced' %}active{% endif %}">Pokročilé</a>
+                    style="text-decoration: none; color: inherit; display: flex; align-items: center; gap: 10px;">
+                    <h1 class="logo" style="margin: 0; color: var(--accent-color); font-size: 2.5rem; line-height: 1;">
+                        md
+                    </h1>
+                    <span style="font-size: 0.9rem; color: white; opacity: 0.9; margin-top: 5px;">mladý divák <span
+                            style="font-size: 0.7em; opacity: 0.7;">v{{ version }}</span></span>
+                    {% if current_mode != 'production' %} <span
+                        style="color: var(--accent-color); font-size: 0.7em; border: 1px solid var(--accent-color); padding: 2px 6px; border-radius: 4px;">TEST</span>{%
+                    endif %}
+                </a>
+                <div class="nav-links">
+                    <a href="{{ url_for('index') }}"
+                        class="{% if request.endpoint == 'index' %}active{% endif %}">Přihlášky</a>
+                    <a href="{{ url_for('stats') }}"
+                        class="{% if request.endpoint == 'stats' %}active{% endif %}">Statistiky</a>
+                    <a href="{{ url_for('advanced') }}"
+                        class="{% if request.endpoint == 'advanced' %}active{% endif %}">Pokročilé</a>
+                </div>
             </div>
+
+            <div class="nav-right">
+                {% if session.user %}
+                <a href="{{ url_for('logout') }}" class="logout-btn">Odhlásit</a>
+                <span class="user-email">
+                    {{ session.user.email }}
+                </span>
+                {% endif %}
+            </div>
+        </div>
     </nav>
 
     <main class="container">
