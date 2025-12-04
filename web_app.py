@@ -30,8 +30,9 @@ logger = logging.getLogger(__name__)
 app = Flask(__name__)
 app.secret_key = os.environ.get('SECRET_KEY', 'dev-secret-key-change-in-production')
 
-# Allow OAuth over HTTP for development
-os.environ['OAUTHLIB_INSECURE_TRANSPORT'] = '1'
+# Allow OAuth over HTTP for development (set to '0' in production with HTTPS)
+if 'OAUTHLIB_INSECURE_TRANSPORT' not in os.environ:
+    os.environ['OAUTHLIB_INSECURE_TRANSPORT'] = os.getenv('OAUTHLIB_INSECURE_TRANSPORT', '1')
 
 # Session configuration
 app.config.update(
