@@ -53,6 +53,19 @@ class TestWebApp(unittest.TestCase):
             );
         ''')
         
+        cursor.execute('''
+            CREATE TABLE audit_logs (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                applicant_id INTEGER NOT NULL,
+                action TEXT NOT NULL,
+                user TEXT NOT NULL,
+                timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                old_value TEXT,
+                new_value TEXT,
+                FOREIGN KEY (applicant_id) REFERENCES applicants (id)
+            );
+        ''')
+        
         # Insert sample data
         cursor.execute('''
             INSERT INTO applicants (first_name, last_name, email, dob, membership_id, city, status)
@@ -127,6 +140,70 @@ class TestWebApp(unittest.TestCase):
         response = self.client.get('/applicant/1/card')
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.mimetype, 'image/png')
+
+    def test_stats_with_character(self):
+        """Test that stats page includes character info"""
+        # Add character to the test applicant
+        conn = sqlite3.connect(self.db_path)
+        conn.execute('UPDATE applicants SET character = ? WHERE id = 1', ('Introvert',))
+        conn.commit()
+        conn.close()
+        
+        response = self.client.get('/stats')
+        self.assertEqual(response.status_code, 200)
+        self.assertIn(b'Povaha', response.data)
+        self.assertIn(b'Introvert', response.data)
+
+    def test_filter_by_character(self):
+        """Test filtering applicants by character"""
+        # Add another applicant with different character
+        conn = sqlite3.connect(self.db_path)
+        # Update first applicant
+        conn.execute('UPDATE applicants SET character = ? WHERE id = 1', ('Introvert',))
+        # Add second applicant
+        conn.execute('''
+            INSERT INTO applicants (first_name, last_name, email, character, status)
+            VALUES (?, ?, ?, ?, ?)
+        ''', ('Petr', 'Svoboda', 'petr@example.com', 'Extrovert', 'Nová'))
+        conn.commit()
+        conn.close()
+        
+        # Filter for Introvert
+        response = self.client.get('/?character=Introvert')
+        self.assertEqual(response.status_code, 200)
+        self.assertIn(b'Jan', response.data)
+        self.assertNotIn(b'Petr', response.data)
+        
+        # Filter for Extrovert
+        response = self.client.get('/?character=Extrovert')
+        self.assertEqual(response.status_code, 200)
+        self.assertNotIn(b'Jan', response.data)
+        self.assertIn(b'Petr', response.data)
+
+    def test_pagination(self):
+        """Test pagination links exist"""
+        # Create enough applicants to trigger pagination (per_page=20)
+        # We already have 2. Let's create dummy links check logic via template rendering if possible,
+        # or just ensure page parameter works.
+        conn = sqlite3.connect(self.db_path)
+        for i in range(25):
+            conn.execute('''
+                INSERT INTO applicants (first_name, last_name, email, membership_id, status)
+                VALUES (?, ?, ?, ?, ?)
+            ''', (f'User{i}', f'Test{i}', f'user{i}@test.com', f'{2000+i}', 'Nová'))
+        conn.commit()
+        conn.close()
+        
+        # Request page 2
+        response = self.client.get('/?page=2')
+        self.assertEqual(response.status_code, 200)
+        # Should show some users from page 2 (User0, Jan, etc.)
+        # With DESC sort, older users are on later pages
+        self.assertIn(b'User0', response.data)
+        
+        # Should see pagination controls
+        self.assertIn(b'pagination-numbers', response.data)
+        self.assertIn(b'active', response.data) # Active page indicator
 
     def test_update_applicant_field(self):
         """Test updating a single applicant field via AJAX"""

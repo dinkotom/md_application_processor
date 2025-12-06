@@ -1,3 +1,58 @@
+## [1.6] - 2025-12-06
+
+### Přidáno
+- **Filtrování podle povahy**: Přidány statistiky povahy na stránku statistik
+  - Kliknutím na číslo u povahy dojde k vyfiltrování seznamu uchazečů
+  - Statistiky seřazeny sestupně podle počtu a abecedně
+- **Vylepšené stránkování**:
+  - Přidána tlačítka pro první (`<<`) a poslední (`>>`) stránku
+  - Přidán seznam čísel stránek s indikací aktuální stránky a inteligentním zkracováním (`1 ... 4 5 6 ... 10`)
+  - Vylepšený design stránkování v ladícím stylu aplikace
+- **Konzistentní design**: Sjednocení stylu tlačítek a odkazů v tabulkách
+
+### Změněno
+- **Web App**:
+  - `stats` route nyní počítá a předává statistiky povahy
+  - `get_filtered_applicants` podporuje filtrování podle `character`
+  - `index` route zachovává `page` a filtry v URL pro lepší UX při navigaci
+- **UI**:
+  - Aktualizována šablona `stats.html` pro zobrazení sekce "Povaha"
+  - Aktualizována šablona `index.html` pro nové stránkovací komponenty
+  - Aktualizován `style.css` pro styly stránkování
+
+### Technické
+- Přidán test `test_filter_by_character` pro ověření filtrování
+- Přidán test `test_pagination` pro ověření generování odkazů na stránky
+
+---
+
+## [1.5] - 2025-12-05
+
+### Přidáno
+- **Auditní stopa (Audit Trail)**: Kompletní historie změn u uchazečů
+  - Sledování změn v polích (jméno, stav, poznámky, atd.)
+  - Záznam odeslání uvítacích emailů a exportů do Ecomailu
+  - Změny zobrazeny v přehledné tabulce "Historie aktivit" na detailní stránce uchazeče
+  - Lokalizované datum a čas (český formát)
+  - Záznam původní a nové hodnoty pro každou změnu
+
+### Změněno
+- **UI Tabulky historie**: Vylepšený design pro lepší čitelnost
+  - Oddělení sloupců svislými čarami
+  - Zvýrazněné záhlaví a pruhované řádky
+  - Zvětšené odsazení pro pohodlnější čtení
+  - Responzivní zobrazení
+- **Formátování data**: Datum v historii aktivit je nyní ve formátu `d. m. YYYY HH:MM:SS`
+- **Konfigurace testů**: Opravena inicializace databáze v testech (`init_db` nyní vytváří tabulku `audit_logs`)
+
+### Technické
+- Nová databázová tabulka `audit_logs`
+- Pomocná funkce `log_action` pro centralizované logování
+- Vlastní Jinja2 filtr `datetime_cz` pro formátování data
+- Rozšíření testů v `test_web_app.py` o vytváření auditní tabulky
+
+---
+
 ## [1.4] - 2025-12-03
 
 ### Změněno

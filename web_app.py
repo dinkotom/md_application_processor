@@ -7,6 +7,7 @@ Displays applicant data from the database
 from flask import Flask, render_template, request, jsonify, redirect, url_for, send_from_directory
 import sqlite3
 import os
+import json
 from datetime import datetime
 from dotenv import load_dotenv
 from authlib.integrations.flask_client import OAuth
@@ -65,7 +66,7 @@ DB_PATH_PROD = os.path.join(BASE_DIR, 'applications.db')
 ECOMAIL_LIST_ID_TEST = 17
 ECOMAIL_LIST_ID_PROD = 16
 
-VERSION = "1.4"
+VERSION = '1.6'
 
 def init_db(db_path):
     """Initialize database with schema if it doesn't exist"""
@@ -108,38 +109,52 @@ def init_db(db_path):
         );
     ''')
     
-    # Create email_template table
+    # Create audit_logs table
     cursor.execute('''
-        CREATE TABLE IF NOT EXISTS email_template (
+        CREATE TABLE IF NOT EXISTS audit_logs (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
-            subject TEXT NOT NULL,
-            body TEXT NOT NULL,
-            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-        )
+            applicant_id INTEGER NOT NULL,
+            action TEXT NOT NULL,
+            user TEXT NOT NULL,
+            timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            old_value TEXT,
+            new_value TEXT,
+            FOREIGN KEY (applicant_id) REFERENCES applicants (id)
+        );
     ''')
-    
-    # Insert default email template if none exists
-    cursor.execute('SELECT COUNT(*) FROM email_template')
-    if cursor.fetchone()[0] == 0:
-        default_subject = "Členská karta Mladý divák"
-        default_body = """Dobrý den {first_name} {last_name},
-
-děkujeme za Vaši přihlášku do programu Mladý divák.
-
-V příloze naleznete Vaši členskou kartu (číslo {membership_id}).
-
-S pozdravem,
-Tým Mladý divák"""
-        
-        cursor.execute('''
-            INSERT INTO email_template (subject, body)
-            VALUES (?, ?)
-        ''', (default_subject, default_body))
     
     conn.commit()
     conn.close()
     logger.info(f"Database initialized: {db_path}")
+
+def log_action(applicant_id, action, user_email, old_value=None, new_value=None, db_path=None):
+    """
+    Log an action to the audit_logs table
+    """
+    if db_path is None:
+        db_path = get_db_path()
+        
+    try:
+        conn = sqlite3.connect(db_path)
+        cursor = conn.cursor()
+        
+        # Serialize values if they are complex objects
+        if isinstance(old_value, (dict, list)):
+            old_value = json.dumps(old_value, ensure_ascii=False)
+        if isinstance(new_value, (dict, list)):
+            new_value = json.dumps(new_value, ensure_ascii=False)
+            
+        cursor.execute('''
+            INSERT INTO audit_logs (applicant_id, action, user, old_value, new_value)
+            VALUES (?, ?, ?, ?, ?)
+        ''', (applicant_id, action, user_email, str(old_value) if old_value is not None else None, str(new_value) if new_value is not None else None))
+        
+        conn.commit()
+    except Exception as e:
+        logger.error(f"Failed to log action: {e}")
+    finally:
+        if 'conn' in locals():
+            conn.close()
 
 def get_db_path():
     """Get current database path based on session"""
@@ -236,6 +251,19 @@ def slugify_status(status):
 
 app.jinja_env.filters['slugify_status'] = slugify_status
 
+def datetime_cz(value):
+    """Format datetime string to Czech format"""
+    if not value:
+        return ""
+    try:
+        # Value comes from SQLite as YYYY-MM-DD HH:MM:SS
+        dt = datetime.strptime(value, '%Y-%m-%d %H:%M:%S')
+        return dt.strftime('%d. %m. %Y %H:%M:%S')
+    except (ValueError, TypeError):
+        return value
+
+app.jinja_env.filters['datetime_cz'] = datetime_cz
+
 @app.route('/login')
 def login():
     """Login page"""
@@ -299,7 +327,9 @@ def get_filtered_applicants(request_args):
     filter_school = request_args.get('school', '')
     filter_interest = request_args.get('interest', '')
     filter_source = request_args.get('source', '')
+    filter_source = request_args.get('source', '')
     filter_alerts = request_args.get('alerts', '')  # New: filter for applicants with alerts
+    filter_character = request_args.get('character', '')
     sort_by = request_args.get('sort', 'id')  # Default sort by ID
     sort_order = request_args.get('order', 'desc')  # Default descending
     
@@ -319,6 +349,10 @@ def get_filtered_applicants(request_args):
     if filter_source:
         query += " AND source = ?"
         params.append(filter_source)
+
+    if filter_character:
+        query += " AND character = ?"
+        params.append(filter_character)
 
     if filter_interest:
         query += " AND interests LIKE ?"
@@ -419,7 +453,9 @@ def index():
     filter_school = request.args.get('school', '')
     filter_interest = request.args.get('interest', '')
     filter_source = request.args.get('source', '')
+    filter_source = request.args.get('source', '')
     filter_alerts = request.args.get('alerts', '')
+    filter_character = request.args.get('character', '')
     sort_by = request.args.get('sort', 'id')
     sort_order = request.args.get('order', 'desc')
 
@@ -480,6 +516,7 @@ def index():
                          filter_interest=filter_interest,
                          filter_source=filter_source,
                          filter_alerts=filter_alerts,
+                         filter_character=filter_character,
                          page=page,
                          total_pages=total_pages,
                          total=len(all_applicants))
@@ -622,6 +659,9 @@ def applicant_detail(id):
     """Applicant detail page"""
     conn = get_db_connection()
     applicant = conn.execute('SELECT * FROM applicants WHERE id = ? AND deleted = 0', (id,)).fetchone()
+    
+    # Fetch audit logs
+    audit_logs = conn.execute('SELECT * FROM audit_logs WHERE applicant_id = ? ORDER BY timestamp DESC', (id,)).fetchall()
     conn.close()
     
     if applicant is None:
@@ -707,7 +747,7 @@ def applicant_detail(id):
         target_list_id = ECOMAIL_LIST_ID_TEST if current_mode == 'test' else ECOMAIL_LIST_ID_PROD
         ecomail_list_name = f'List ID {target_list_id}'
     
-    return render_template('detail.html', applicant=app_dict, back_args=back_args, prev_id=prev_id, next_id=next_id, current_mode=current_mode, ecomail_list_name=ecomail_list_name)
+    return render_template('detail.html', applicant=app_dict, back_args=back_args, prev_id=prev_id, next_id=next_id, current_mode=current_mode, ecomail_list_name=ecomail_list_name, audit_logs=audit_logs)
 
 @app.route('/applicant/<int:id>/card')
 @login_required
@@ -775,6 +815,70 @@ def serve_card_preview(id):
     # Send as inline image (not download)
     return send_file(img_io, mimetype='image/png')
 
+@app.route('/applicant/<int:id>/send_welcome_email', methods=['POST'])
+@login_required
+def send_welcome_email_route(id):
+    """Send welcome email to applicant with their membership card"""
+    from src.generator import generate_membership_card
+    from src.email_sender import send_welcome_email
+    import time
+    
+    conn = get_db_connection()
+    applicant = conn.execute('SELECT * FROM applicants WHERE id = ? AND deleted = 0', (id,)).fetchone()
+    conn.close()
+    
+    if applicant is None:
+        return jsonify({'success': False, 'error': 'Applicant not found'}), 404
+    
+    app_dict = dict(applicant)
+    
+    # Generate card bytes
+    try:
+        img_io = generate_membership_card(app_dict)
+    except Exception as e:
+        logger.error(f"Error generating card for email: {e}")
+        return jsonify({'success': False, 'error': f'Failed to generate card: {str(e)}'}), 500
+        
+    # Get email credentials
+    email_user = os.environ.get("EMAIL_USER")
+    email_pass = os.environ.get("EMAIL_PASS")
+    
+    if not email_user or not email_pass:
+        return jsonify({'success': False, 'error': 'Email credentials not configured (EMAIL_USER/EMAIL_PASS)'}), 500
+    
+    # Send email
+    current_mode = session.get('mode', 'test')
+    result = send_welcome_email(
+        applicant_data=app_dict, 
+        card_image_bytes=img_io, 
+        email_user=email_user, 
+        email_pass=email_pass, 
+        mode=current_mode
+    )
+    
+    if result['success']:
+        # Update database to mark email as sent
+        try:
+            conn = get_db_connection()
+            conn.execute('''
+                UPDATE applicants 
+                SET email_sent = 1, email_sent_at = ? 
+                WHERE id = ?
+            ''', (datetime.now().strftime('%Y-%m-%d %H:%M:%S'), id))
+            conn.commit()
+            conn.close()
+            
+            # Log action
+            if 'user' in session:
+                log_action(id, "Odeslání uvítacího emailu", session['user']['email'])
+                
+        except Exception as e:
+            logger.error(f"Error updating email_sent status: {e}")
+            # Don't fail the request if just DB update failed, but log it
+            
+    return jsonify(result)
+
+
 
 
 @app.route('/stats')
@@ -794,6 +898,7 @@ def stats():
     schools = {}
     interests_count = {}
     sources = {}
+    character_counts = {}
     
     for app in applicants:
         # Age distribution
@@ -826,6 +931,11 @@ def stats():
         if app['source']:
             source = app['source'].strip()
             sources[source] = sources.get(source, 0) + 1
+
+        # Character
+        if 'character' in app.keys() and app['character']:
+             char = app['character'].strip()
+             character_counts[char] = character_counts.get(char, 0) + 1
     
     # Age categories
     age_under_15 = len([a for a in ages if a < 15])
@@ -844,7 +954,8 @@ def stats():
                          cities=sorted(cities.items(), key=lambda x: x[1], reverse=True)[:10],
                          schools=sorted(schools.items(), key=lambda x: x[1], reverse=True)[:10],
                          interests=sorted(interests_count.items(), key=lambda x: x[1], reverse=True)[:10],
-                         sources=sorted(sources.items(), key=lambda x: x[1], reverse=True))
+                         sources=sorted(sources.items(), key=lambda x: x[1], reverse=True),
+                         characters=sorted(character_counts.items(), key=lambda x: x[1], reverse=True))
 
 
 @app.route('/exports')
@@ -889,6 +1000,11 @@ def delete_applicant(id):
     conn.execute('UPDATE applicants SET deleted = 1 WHERE id = ?', (id,))
     conn.commit()
     conn.close()
+    
+    # Log action
+    if 'user' in session:
+        log_action(id, "Smazání přihlášky", session['user']['email'])
+        
     return redirect(url_for('index'))
 
 @app.route('/applicant/<int:id>/update', methods=['POST'])
@@ -896,6 +1012,10 @@ def delete_applicant(id):
 def update_applicant(id):
     """Update applicant details"""
     conn = get_db_connection()
+    
+    # Get old values for logging
+    old_data = conn.execute('SELECT * FROM applicants WHERE id = ?', (id,)).fetchone()
+    old_values = dict(old_data) if old_data else {}
     
     first_name = request.form.get('first_name')
     last_name = request.form.get('last_name')
@@ -912,6 +1032,26 @@ def update_applicant(id):
     
     conn.commit()
     conn.close()
+    
+    # Log action
+    if 'user' in session:
+        new_values = {
+            'first_name': first_name,
+            'last_name': last_name,
+            'email': email,
+            'phone': phone,
+            'dob': dob,
+            'status': status
+        }
+        # Filter only changed values
+        changes = {}
+        for k, v in new_values.items():
+            if str(old_values.get(k, '')) != str(v):
+                changes[k] = {'old': old_values.get(k), 'new': v}
+                
+        if changes:
+            log_action(id, "Úprava přihlášky", session['user']['email'], None, changes)
+            
     return redirect(url_for('index'))
 
 @app.route('/applicant/<int:id>/update_status', methods=['POST'])
@@ -920,12 +1060,20 @@ def update_applicant_status(id):
     """Update applicant status only"""
     conn = get_db_connection()
     
+    # Get old status
+    old_status = conn.execute('SELECT status FROM applicants WHERE id = ?', (id,)).fetchone()
+    old_status = old_status['status'] if old_status else None
+    
     status = request.form.get('status')
     
     conn.execute('UPDATE applicants SET status = ? WHERE id = ?', (status, id))
     
     conn.commit()
     conn.close()
+    
+    # Log action
+    if 'user' in session and old_status != status:
+        log_action(id, "Změna stavu", session['user']['email'], old_status, status)
     
     # Redirect back to the same page (index)
     return redirect(url_for('index'))
@@ -945,9 +1093,18 @@ def update_applicant_field(id):
         
     conn = get_db_connection()
     try:
+        # Get old value
+        old_val = conn.execute(f'SELECT {field} FROM applicants WHERE id = ?', (id,)).fetchone()
+        old_val = old_val[0] if old_val else None
+        
         query = f'UPDATE applicants SET {field} = ? WHERE id = ?'
         conn.execute(query, (value, id))
         conn.commit()
+        
+        # Log action
+        if 'user' in session and str(old_val) != str(value):
+            log_action(id, f"Úprava pole {field}", session['user']['email'], old_val, value)
+            
         return jsonify({'success': True})
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)}), 500
@@ -966,9 +1123,18 @@ def update_applicant_note(id):
     
     conn = get_db_connection()
     try:
+        # Get old note
+        old_note = conn.execute('SELECT note FROM applicants WHERE id = ?', (id,)).fetchone()
+        old_note = old_note['note'] if old_note else ''
+        
         conn.execute('UPDATE applicants SET note = ? WHERE id = ?', (note, id))
         conn.commit()
         logger.info(f"Updated note for applicant {id}")
+        
+        # Log action
+        if 'user' in session and old_note != note:
+             log_action(id, "Úprava poznámky", session['user']['email'], old_note, note)
+             
         return jsonify({'success': True})
     except Exception as e:
         logger.error(f"Error updating note for applicant {id}: {e}")
@@ -1101,6 +1267,11 @@ def export_applicant_to_ecomail(id):
             conn.commit()
             logger.info(f"Applicant {id} exported to Ecomail list {list_id} successfully.")
             conn.close()
+            
+            # Log action
+            if 'user' in session:
+                log_action(id, "Export do Ecomailu", session['user']['email'])
+                
             return jsonify({'success': True})
         else:
             logger.error(f"Failed to export applicant {id} to Ecomail: {result.get('error')}")
@@ -1253,126 +1424,9 @@ def clear_database():
     
     return redirect(url_for('index'))
 
-@app.route('/email/template', methods=['GET'])
-@login_required
-def get_email_template():
-    """Get current email template"""
-    conn = get_db_connection()
-    template = conn.execute('SELECT subject, body FROM email_template ORDER BY id DESC LIMIT 1').fetchone()
-    conn.close()
-    
-    if template:
-        return jsonify({
-            'subject': template['subject'],
-            'body': template['body']
-        })
-    else:
-        return jsonify({
-            'subject': '',
-            'body': ''
-        })
 
-@app.route('/email/template', methods=['POST'])
-@login_required
-def save_email_template():
-    """Save email template"""
-    subject = request.form.get('subject', '')
-    body = request.form.get('body', '')
-    
-    conn = get_db_connection()
-    
-    # Update or insert template
-    conn.execute('''
-        INSERT INTO email_template (subject, body, updated_at)
-        VALUES (?, ?, CURRENT_TIMESTAMP)
-    ''', (subject, body))
-    
-    conn.commit()
-    conn.close()
-    logger.info("Email template saved.")
-    
-    return jsonify({'success': True, 'message': 'Template saved successfully'})
 
-@app.route('/applicant/<int:id>/email/preview', methods=['POST'])
-@login_required
-def preview_email(id):
-    """Preview email for applicant"""
-    from src.email_sender import preview_email as generate_preview
-    
-    conn = get_db_connection()
-    applicant = conn.execute('SELECT * FROM applicants WHERE id = ? AND deleted = 0', (id,)).fetchone()
-    template = conn.execute('SELECT subject, body FROM email_template ORDER BY id DESC LIMIT 1').fetchone()
-    conn.close()
-    
-    if not applicant:
-        return jsonify({'error': 'Applicant not found'}), 404
-    
-    if not template:
-        return jsonify({'error': 'Email template not configured'}), 400
-    
-    app_data = dict(applicant)
-    mode = session.get('mode', 'test')
-    
-    preview = generate_preview(app_data, template['subject'], template['body'], mode)
-    
-    return jsonify(preview)
 
-@app.route('/applicant/<int:id>/email/send', methods=['POST'])
-@login_required
-def send_email(id):
-    """Send email with membership card to applicant"""
-    from src.email_sender import send_email_with_card
-    from src.generator import generate_membership_card
-    
-    conn = get_db_connection()
-    applicant = conn.execute('SELECT * FROM applicants WHERE id = ? AND deleted = 0', (id,)).fetchone()
-    template = conn.execute('SELECT subject, body FROM email_template ORDER BY id DESC LIMIT 1').fetchone()
-    
-    if not applicant:
-        conn.close()
-        return jsonify({'error': 'Applicant not found'}), 404
-    
-    if not template:
-        conn.close()
-        return jsonify({'error': 'Email template not configured'}), 400
-    
-    app_data = dict(applicant)
-    mode = session.get('mode', 'test')
-    
-    # Generate membership card
-    card_bytes = generate_membership_card(app_data)
-    
-    # Get email credentials
-    email_user = os.environ.get('EMAIL_USER')
-    email_pass = os.environ.get('EMAIL_PASS')
-    
-    if not email_user or not email_pass:
-        conn.close()
-        return jsonify({'error': 'Email credentials not configured'}), 500
-    
-    # Send email
-    result = send_email_with_card(
-        app_data,
-        template['subject'],
-        template['body'],
-        card_bytes,
-        email_user,
-        email_pass,
-        mode
-    )
-    
-    if result['success']:
-        # Update database
-        conn.execute('''
-            UPDATE applicants 
-            SET email_sent = 1, email_sent_at = CURRENT_TIMESTAMP
-            WHERE id = ?
-        ''', (id,))
-        conn.commit()
-    
-    conn.close()
-    
-    return jsonify(result)
 
 @app.route('/changelog')
 @login_required
@@ -1568,8 +1622,14 @@ def bulk_export_to_ecomail():
                 if result['success']:
                     if is_update:
                         updated_count += 1
+                        # Log action
+                        if 'user' in session:
+                             log_action(app['id'], "Aktualizace v Ecomailu (Hromadná)", session['user']['email'])
                     else:
                         created_count += 1
+                        # Log action
+                        if 'user' in session:
+                             log_action(app['id'], "Export do Ecomailu (Hromadná)", session['user']['email'])
                 else:
                     error_count += 1
                     logger.warning(f"Failed to export applicant {app['id']}: {result.get('error')}")

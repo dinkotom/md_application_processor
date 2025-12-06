@@ -193,26 +193,48 @@
 <!-- Pagination -->
 {% if total_pages > 1 %}
 <div class="pagination">
+    <!-- First Page -->
     {% if page > 1 %}
-    <a href="{{ url_for('index', page=page-1, search=search, status=filter_status, age_group=filter_age_group, city=filter_city, school=filter_school, interest=filter_interest, source=filter_source) }}"
-        class="btn btn-secondary">
-        &laquo; Předchozí
+    <a href="{{ url_for('index', page=1, search=search, status=filter_status, age_group=filter_age_group, city=filter_city, school=filter_school, interest=filter_interest, source=filter_source, alerts=filter_alerts, character=filter_character) }}"
+        class="btn btn-secondary" title="První stránka">
+        &laquo;&laquo;
+    </a>
+    <a href="{{ url_for('index', page=page-1, search=search, status=filter_status, age_group=filter_age_group, city=filter_city, school=filter_school, interest=filter_interest, source=filter_source, alerts=filter_alerts, character=filter_character) }}"
+        class="btn btn-secondary" title="Předchozí stránka">
+        &laquo;
     </a>
     {% else %}
-    <span class="btn btn-secondary disabled">&laquo; Předchozí</span>
+    <span class="btn btn-secondary disabled">&laquo;&laquo;</span>
+    <span class="btn btn-secondary disabled">&laquo;</span>
     {% endif %}
 
-    <span class="pagination-info">
-        Stránka {{ page }} z {{ total_pages }}
-    </span>
+    <!-- Page Numbers -->
+    <div class="pagination-numbers">
+        {% for p in range(1, total_pages + 1) %}
+        {% if p == page %}
+        <span class="page-number active">{{ p }}</span>
+        {% elif p == 1 or p == total_pages or (p >= page - 2 and p <= page + 2) %} <a
+            href="{{ url_for('index', page=p, search=search, status=filter_status, age_group=filter_age_group, city=filter_city, school=filter_school, interest=filter_interest, source=filter_source, alerts=filter_alerts, character=filter_character) }}"
+            class="page-number">{{ p }}</a>
+            {% elif p == page - 3 or p == page + 3 %}
+            <span class="page-ellipsis">...</span>
+            {% endif %}
+            {% endfor %}
+    </div>
 
+    <!-- Next/Last Page -->
     {% if page < total_pages %} <a
-        href="{{ url_for('index', page=page+1, search=search, status=filter_status, age_group=filter_age_group, city=filter_city, school=filter_school, interest=filter_interest, source=filter_source) }}"
-        class="btn btn-secondary">
-        Další &raquo;
+        href="{{ url_for('index', page=page+1, search=search, status=filter_status, age_group=filter_age_group, city=filter_city, school=filter_school, interest=filter_interest, source=filter_source, alerts=filter_alerts, character=filter_character) }}"
+        class="btn btn-secondary" title="Další stránka">
+        &raquo;
+        </a>
+        <a href="{{ url_for('index', page=total_pages, search=search, status=filter_status, age_group=filter_age_group, city=filter_city, school=filter_school, interest=filter_interest, source=filter_source, alerts=filter_alerts, character=filter_character) }}"
+            class="btn btn-secondary" title="Poslední stránka">
+            &raquo;&raquo;
         </a>
         {% else %}
-        <span class="btn btn-secondary disabled">Další &raquo;</span>
+        <span class="btn btn-secondary disabled">&raquo;</span>
+        <span class="btn btn-secondary disabled">&raquo;&raquo;</span>
         {% endif %}
 </div>
 {% endif %}

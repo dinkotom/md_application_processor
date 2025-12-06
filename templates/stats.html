@@ -72,5 +72,15 @@
         </div>
         {% endfor %}
     </div>
+
+    <div class="stat-card">
+        <h3>Povaha</h3>
+        {% for char, count in characters %}
+        <div class="stat-item">
+            <span class="stat-label">{{ char }}:</span>
+            <span class="stat-value"><a href="{{ url_for('index', character=char) }}">{{ count }}</a></span>
+        </div>
+        {% endfor %}
+    </div>
 </div>
 {% endblock %}
