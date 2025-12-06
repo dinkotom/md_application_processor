@@ -17,6 +17,9 @@ MIGRATIONS = [
     ('migrate_parent_warning', 'migrate_database'),
     ('migrate_duplicate_warning', 'migrate_database'),
     ('migrate_add_note', 'migrate_add_note_column'),
+    ('migrate_audit_log', 'migrate_audit_log'),
+    ('migrate_newsletter_integer', 'migrate_newsletter_to_integer'),
+    ('migrate_remove_email_template', 'migrate_database'),
 ]
 
 def run_migrations(db_path):

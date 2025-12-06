@@ -24,6 +24,13 @@
 - Přidán test `test_filter_by_character` pro ověření filtrování
 - Přidán test `test_pagination` pro ověření generování odkazů na stránky
 
+### Migrace
+> [!IMPORTANT]
+> Pro nasazení této verze na existující instalaci je doporučeno spustit migrační skript pro vyčištění databáze:
+> ```bash
+> python3 migrate_remove_email_template.py
+> ```
+
 ---
 
 ## [1.5] - 2025-12-05

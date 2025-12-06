@@ -35,7 +35,13 @@ A Python web application for managing club membership applications. It automates
     pip3 install -r requirements.txt
     ```
 
-3.  **Configure Environment**:
+3.  **Run Migrations**:
+    Ensure your database schema is up to date by running the migration script. This applies to both new installations and updates.
+    ```bash
+    python3 migrate_all.py
+    ```
+
+4.  **Configure Environment**:
     Create a `.env` file in the root directory:
     ```bash
     EMAIL_USER='your-email@gmail.com'

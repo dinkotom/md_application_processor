@@ -35,6 +35,46 @@ def render_email_template(template_text, applicant_data):
     return result
 
 
+def render_html_email_template(template_html, applicant_data):
+    """
+    Replace dynamic content in HTML email template with applicant data
+    
+    Args:
+        template_html: HTML email template
+        applicant_data: Dict with applicant information
+    
+    Returns:
+        Rendered HTML email
+    """
+    result = template_html
+    
+    # Template no longer uses dynamic content replacement for name
+    pass
+    
+    return result
+
+
+def load_welcome_email_template():
+    """
+    Load the welcome email HTML template
+    
+    Returns:
+        HTML template string or None if not found
+    """
+    template_path = os.path.join(
+        os.path.dirname(os.path.dirname(__file__)),
+        'templates',
+        'welcome_email.html'
+    )
+    
+    try:
+        with open(template_path, 'r', encoding='utf-8') as f:
+            return f.read()
+    except FileNotFoundError:
+        print(f"Warning: Welcome email template not found at {template_path}")
+        return None
+
+
 def get_recipient_email(applicant_email, mode):
     """
     Get the actual recipient email based on mode
@@ -51,18 +91,19 @@ def get_recipient_email(applicant_email, mode):
     return applicant_email
 
 
-def send_email_with_card(applicant_data, subject, body, card_image_bytes, email_user, email_pass, mode='test'):
+def send_email_with_card(applicant_data, subject, body, card_image_bytes, email_user, email_pass, mode='test', use_html=False):
     """
     Send email with membership card attachment
     
     Args:
         applicant_data: Dict with applicant information
         subject: Email subject (can contain placeholders)
-        body: Email body (can contain placeholders)
+        body: Email body (can contain placeholders) or HTML template
         card_image_bytes: BytesIO object with PNG image
         email_user: SMTP username
         email_pass: SMTP password
         mode: 'test' or 'production'
+        use_html: If True, treat body as HTML content
     
     Returns:
         Dict with success status and message
@@ -70,7 +111,11 @@ def send_email_with_card(applicant_data, subject, body, card_image_bytes, email_
     try:
         # Render email content
         rendered_subject = render_email_template(subject, applicant_data)
-        rendered_body = render_email_template(body, applicant_data)
+        
+        if use_html:
+            rendered_body = render_html_email_template(body, applicant_data)
+        else:
+            rendered_body = render_email_template(body, applicant_data)
         
         # Get recipient
         recipient = get_recipient_email(applicant_data.get('email'), mode)
@@ -82,8 +127,11 @@ def send_email_with_card(applicant_data, subject, body, card_image_bytes, email_
         msg['To'] = recipient
         msg['Subject'] = rendered_subject
         
-        # Add body
-        msg.attach(MIMEText(rendered_body, 'plain', 'utf-8'))
+        # Add body (HTML or plain text)
+        if use_html:
+            msg.attach(MIMEText(rendered_body, 'html', 'utf-8'))
+        else:
+            msg.attach(MIMEText(rendered_body, 'plain', 'utf-8'))
         
         # Filename: id_name_surname without diacritics
         first_name = render_email_template('{first_name}', applicant_data).lower().replace(' ', '_')
@@ -119,6 +167,43 @@ def send_email_with_card(applicant_data, subject, body, card_image_bytes, email_
             'message': f'Failed to send email: {str(e)}',
             'error': str(e)
         }
+
+
+def send_welcome_email(applicant_data, card_image_bytes, email_user, email_pass, mode='test'):
+    """
+    Send welcome email using the official HTML template
+    
+    Args:
+        applicant_data: Dict with applicant information
+        card_image_bytes: BytesIO object with PNG image
+        email_user: SMTP username
+        email_pass: SMTP password
+        mode: 'test' or 'production'
+    
+    Returns:
+        Dict with success status and message
+    """
+    # Load the welcome email template
+    html_template = load_welcome_email_template()
+    
+    if html_template is None:
+        return {
+            'success': False,
+            'message': 'Welcome email template not found',
+            'error': 'Template file missing'
+        }
+    
+    # Send email with HTML template
+    return send_email_with_card(
+        applicant_data=applicant_data,
+        subject="Vítej v klubu Mladého diváka",
+        body=html_template,
+        card_image_bytes=card_image_bytes,
+        email_user=email_user,
+        email_pass=email_pass,
+        mode=mode,
+        use_html=True
+    )
 
 
 def preview_email(applicant_data, subject, body, mode='test'):

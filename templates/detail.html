@@ -13,21 +13,21 @@
     <div style="display: flex; flex-wrap: wrap; gap: 1rem; align-items: center; justify-content: space-between;">
         <!-- Primary Actions -->
         <div style="display: flex; gap: 0.5rem; flex-wrap: wrap; align-items: center;">
-            {% if applicant.email_sent %}
-            <span
-                style="color: var(--success-color); display: flex; align-items: center; padding: 0.25rem 0.75rem; background: rgba(40, 167, 69, 0.1); border-radius: 0.25rem; font-size: 0.85rem;">
-                ✓ Email odeslán {{ applicant.email_sent_at[:16] if applicant.email_sent_at else '' }}
-            </span>
-            {% else %}
-            <button type="button" onclick="openEmailModal()" class="btn btn-success btn-small">Odeslat email s
-                kartou</button>
-            {% endif %}
+
 
             <button onclick="exportToEcomail({{ applicant.id }})" class="btn btn-secondary btn-small" id="exportBtn">
                 {% if applicant.exported_to_ecomail %}
                 🔄 Aktualizovat v Ecomail
                 {% else %}
                 📤 Vytvořit v Ecomail
+                {% endif %}
+            </button>
+
+            <button onclick="confirmWelcomeEmail({{ applicant.id }})" class="btn btn-secondary btn-small" id="emailBtn">
+                {% if applicant.email_sent %}
+                📧 Poslat znovu (odesláno {{ applicant.email_sent_at }})
+                {% else %}
+                📧 Poslat uvítací email
                 {% endif %}
             </button>
 
@@ -69,11 +69,62 @@
             justify-content: space-between;
         }
     }
+
+    /* Global styles for audit log table */
+    .audit-log-table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 0.9em;
+        margin-top: 1rem;
+        background: #fff;
+        border: 1px solid var(--border-color);
+    }
+
+    .audit-log-table th,
+    .audit-log-table td {
+        padding: 12px 16px;
+        text-align: left;
+        border-bottom: 1px solid var(--border-color);
+        border-right: 1px solid var(--border-color);
+        /* Add vertical borders */
+    }
+
+    .audit-log-table th {
+        background-color: var(--bg-secondary);
+        font-weight: 600;
+        color: var(--text-color);
+        white-space: nowrap;
+    }
+
+    .audit-log-table tr:last-child td {
+        border-bottom: none;
+    }
+
+    .audit-log-table tr:hover {
+        background-color: #f9f9f9;
+        /* Striped hover effect */
+    }
+
+    .audit-log-table td:last-child,
+    .audit-log-table th:last-child {
+        border-right: none;
+    }
+
+    .audit-value-cell {
+        font-family: monospace;
+        font-size: 0.85em;
+        white-space: pre-wrap;
+        max-width: 250px;
+        overflow-wrap: break-word;
+        background: #fafafa;
+    }
+    }
 </style>
 
 <script>
     let currentEcomailId = null;
     let isEcomailUpdate = false;
+    let currentEmailId = null;
 
     function exportToEcomail(id) {
         currentEcomailId = id;
@@ -154,6 +205,83 @@
             btn.innerHTML = originalText;
             alert('Chyba při komunikaci se serverem.');
         }
+    }
+
+    // Email Sending Logic
+    function confirmWelcomeEmail(id) {
+        currentEmailId = id;
+        const confirmMsg = `Opravdu chcete poslat uvítací email s členskou kartičkou na adresu {{ applicant.email }}?`;
+
+        document.getElementById('welcomeEmailConfirmMsg').textContent = confirmMsg;
+
+        const modal = document.getElementById('welcomeEmailModal');
+        modal.style.display = 'flex';
+        modal.offsetHeight;
+        modal.classList.add('active');
+    }
+
+    function closeWelcomeEmailModal() {
+        const modal = document.getElementById('welcomeEmailModal');
+        modal.classList.remove('active');
+        setTimeout(() => {
+            modal.style.display = 'none';
+            currentEmailId = null;
+        }, 300);
+    }
+
+    async function sendWelcomeEmail() {
+        if (!currentEmailId) return;
+
+        closeWelcomeEmailModal();
+
+        const btn = document.getElementById('emailBtn');
+        const originalText = btn.innerHTML;
+
+        btn.disabled = true;
+        btn.innerHTML = '⏳ Odesílám...';
+
+        try {
+            const response = await fetch(`/applicant/${currentEmailId}/send_welcome_email`, {
+                method: 'POST'
+            });
+
+            const result = await response.json();
+
+            if (result.success) {
+                btn.disabled = false;
+
+                // Show success modal
+                const successModal = document.getElementById('welcomeEmailSuccessModal');
+                const successMsg = `✓ Email byl úspěšně odeslán na adresu ${result.recipient}`;
+                if (result.mode === 'test') {
+                    document.getElementById('welcomeEmailSuccessMsg').innerHTML = successMsg + '<br><small>(Testovací režim: odesláno na testovací email)</small>';
+                } else {
+                    document.getElementById('welcomeEmailSuccessMsg').textContent = successMsg;
+                }
+
+                successModal.style.display = 'flex';
+                successModal.offsetHeight;
+                successModal.classList.add('active');
+            } else {
+                btn.disabled = false;
+                btn.innerHTML = originalText;
+                alert('Chyba při odesílání: ' + (result.error || 'Neznámá chyba'));
+            }
+        } catch (error) {
+            console.error('Error:', error);
+            btn.disabled = false;
+            btn.innerHTML = originalText;
+            alert('Chyba při komunikaci se serverem.');
+        }
+    }
+
+    function closeWelcomeEmailSuccessModal() {
+        const modal = document.getElementById('welcomeEmailSuccessModal');
+        modal.classList.remove('active');
+        setTimeout(() => {
+            modal.style.display = 'none';
+            window.location.reload();
+        }, 300);
     }
 
     // Auto-save note on blur
@@ -521,21 +649,35 @@
         </div>
     </div>
 
-    <!-- Email Preview Modal -->
-    <div id="emailModal" class="modal-overlay">
-        <div class="modal" style="max-width: 600px;">
-            <div class="modal-title">📧 Náhled emailu</div>
-            <div class="modal-body">
-                <div id="emailPreviewContent">
-                    <p>Načítání náhledu...</p>
-                </div>
-            </div>
-            <div class="modal-actions">
-                <button class="btn btn-secondary" onclick="closeEmailModal()">Zrušit</button>
-                <button id="sendEmailBtn" class="btn btn-success" onclick="confirmSendEmail()">Odeslat email</button>
-            </div>
+    {% if audit_logs %}
+    <div class="detail-card full-width">
+        <h3>Historie aktivit</h3>
+        <div style="overflow-x: auto;">
+            <table class="audit-log-table">
+                <thead>
+                    <tr>
+                        <th>Datum</th>
+                        <th>Uživatel</th>
+                        <th>Akce</th>
+                        <th>Původní hodnota</th>
+                        <th>Nová hodnota</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for log in audit_logs %}
+                    <tr>
+                        <td>{{ log.timestamp | datetime_cz }}</td>
+                        <td>{{ log.user }}</td>
+                        <td>{{ log.action }}</td>
+                        <td class="audit-value-cell">{{ log.old_value if log.old_value else '-' }}</td>
+                        <td class="audit-value-cell">{{ log.new_value if log.new_value else '-' }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
         </div>
     </div>
+    {% endif %}
 
     {% endblock %}
 
@@ -678,15 +820,13 @@
         // Close modals on click outside
         window.onclick = function (event) {
             const deleteModal = document.getElementById('deleteModal');
-            const emailModal = document.getElementById('emailModal');
+
             const ecomailModal = document.getElementById('ecomailModal');
 
             if (event.target == deleteModal) {
                 closeDeleteModal();
             }
-            if (event.target == emailModal) {
-                closeEmailModal();
-            }
+
             if (event.target == ecomailModal) {
                 closeEcomailModal();
             }
@@ -696,108 +836,96 @@
         document.addEventListener('keydown', function (event) {
             if (event.key === 'Escape') {
                 closeDeleteModal();
-                closeEmailModal();
+
                 closeEcomailModal();
             }
         });
 
-        // Email Modal Functions
-        async function openEmailModal() {
-            const modal = document.getElementById('emailModal');
-            const previewContent = document.getElementById('emailPreviewContent');
 
-            // Show modal
+        // Email Sending Logic
+        function confirmWelcomeEmail(id) {
+            currentEmailId = id;
+            const currentMode = '{{ current_mode }}';
+            let confirmMsg = '';
+
+            if (currentMode === 'test') {
+                confirmMsg = `⚠️ <strong>TEST MODE:</strong> Email bude odeslán na: <strong>u7745030724@gmail.com</strong><br><small>(Původní email: {{ applicant.email }})</small>`;
+            } else {
+                confirmMsg = `Opravdu chcete poslat uvítací email s členskou kartičkou na adresu <strong>{{ applicant.email }}</strong>?`;
+            }
+
+            document.getElementById('welcomeEmailConfirmMsg').innerHTML = confirmMsg;
+
+            const modal = document.getElementById('welcomeEmailModal');
             modal.style.display = 'flex';
             modal.offsetHeight;
             modal.classList.add('active');
-
-            // Load preview
-            previewContent.innerHTML = '<p>Načítání náhledu...</p>';
-
-            try {
-                const response = await fetch('/applicant/{{ applicant.id }}/email/preview', {
-                    method: 'POST'
-                });
-
-                const data = await response.json();
-
-                if (data.error) {
-                    previewContent.innerHTML = `<p style="color: var(--danger-color);">Chyba: ${data.error}</p>`;
-                    document.getElementById('sendEmailBtn').disabled = true;
-                    return;
-                }
-
-                // Display preview
-                const testModeWarning = data.is_test_mode ?
-                    `<div style="background: #fff3cd; padding: 0.75rem; border-radius: 4px; margin-bottom: 1rem; border-left: 4px solid #ffc107;">
-                    <strong>⚠️ TESTOVACÍ REŽIM:</strong> Email bude odeslán na <code>${data.recipient}</code> místo emailu uchazeče.
-                </div>` : '';
-
-                previewContent.innerHTML = `
-                ${testModeWarning}
-                <div style="margin-bottom: 1rem;">
-                    <strong>Komu:</strong> ${data.recipient}
-                </div>
-                <div style="margin-bottom: 1rem;">
-                    <strong>Předmět:</strong> ${data.subject}
-                </div>
-                <div style="margin-bottom: 1rem;">
-                    <strong>Text:</strong>
-                    <pre style="background: #f5f5f5; padding: 1rem; border-radius: 4px; white-space: pre-wrap; font-size: 0.9em;">${data.body}</pre>
-                </div>
-                <div style="margin-bottom: 1rem;">
-                    <strong>Příloha:</strong> Členská karta (PNG)
-                </div>
-            `;
-
-                document.getElementById('sendEmailBtn').disabled = false;
-
-            } catch (error) {
-                console.error('Error loading preview:', error);
-                previewContent.innerHTML = '<p style="color: var(--danger-color);">Chyba při načítání náhledu</p>';
-                document.getElementById('sendEmailBtn').disabled = true;
-            }
         }
 
-        function closeEmailModal() {
-            const modal = document.getElementById('emailModal');
+        function closeWelcomeEmailModal() {
+            const modal = document.getElementById('welcomeEmailModal');
             modal.classList.remove('active');
             setTimeout(() => {
                 modal.style.display = 'none';
+                currentEmailId = null;
             }, 300);
         }
 
-        async function confirmSendEmail() {
-            const btn = document.getElementById('sendEmailBtn');
-            const originalText = btn.textContent;
+        async function sendWelcomeEmail() {
+            if (!currentEmailId) return;
+
+            closeWelcomeEmailModal();
+
+            const btn = document.getElementById('emailBtn');
+            const originalText = btn.innerHTML;
 
             btn.disabled = true;
-            btn.textContent = 'Odesílání...';
+            btn.innerHTML = '⏳ Odesílám...';
 
             try {
-                const response = await fetch('/applicant/{{ applicant.id }}/email/send', {
+                const response = await fetch(`/applicant/${currentEmailId}/send_welcome_email`, {
                     method: 'POST'
                 });
 
                 const result = await response.json();
 
                 if (result.success) {
-                    alert(`✓ ${result.message}`);
-                    closeEmailModal();
-                    // Reload page to show updated status
-                    window.location.reload();
-                } else {
-                    alert(`✗ Error: ${result.message || result.error}`);
                     btn.disabled = false;
-                    btn.textContent = originalText;
+
+                    // Show success modal
+                    const successModal = document.getElementById('welcomeEmailSuccessModal');
+                    const successMsg = `✓ Email byl úspěšně odeslán na adresu ${result.recipient}`;
+                    if (result.mode === 'test') {
+                        document.getElementById('welcomeEmailSuccessMsg').innerHTML = successMsg + '<br><small>(Testovací režim: odesláno na testovací email)</small>';
+                    } else {
+                        document.getElementById('welcomeEmailSuccessMsg').textContent = successMsg;
+                    }
+
+                    successModal.style.display = 'flex';
+                    successModal.offsetHeight;
+                    successModal.classList.add('active');
+                } else {
+                    btn.disabled = false;
+                    btn.innerHTML = originalText;
+                    alert('Chyba při odesílání: ' + (result.error || 'Neznámá chyba'));
                 }
             } catch (error) {
-                console.error('Error sending email:', error);
-                alert('✗ Chyba při odesílání emailu');
+                console.error('Error:', error);
                 btn.disabled = false;
-                btn.textContent = originalText;
+                btn.innerHTML = originalText;
+                alert('Chyba při komunikaci se serverem.');
             }
         }
+
+        function closeWelcomeEmailSuccessModal() {
+            const modal = document.getElementById('welcomeEmailSuccessModal');
+            modal.classList.remove('active');
+            setTimeout(() => {
+                modal.style.display = 'none';
+                window.location.reload();
+            }, 300);
+        }
+
     </script>
     <!-- Ecomail Confirmation Modal -->
     <div id="ecomailModal" class="modal-overlay">
@@ -822,6 +950,34 @@
             </div>
             <div class="modal-actions">
                 <button class="btn btn-primary" onclick="closeEcomailSuccessModal()">OK</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Welcome Email Confirmation Modal -->
+    <div id="welcomeEmailModal" class="modal-overlay">
+        <div class="modal">
+            <div class="modal-title">Potvrzení odeslání emailu</div>
+            <div class="modal-body">
+                <p id="welcomeEmailConfirmMsg"></p>
+                <p><small style="color: #666;">Budou použity údaje z databáze a vygenerována členská karta.</small></p>
+            </div>
+            <div class="modal-actions">
+                <button class="btn btn-secondary" onclick="closeWelcomeEmailModal()">Zrušit</button>
+                <button class="btn btn-primary" onclick="sendWelcomeEmail()">Odeslat</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Welcome Email Success Modal -->
+    <div id="welcomeEmailSuccessModal" class="modal-overlay">
+        <div class="modal">
+            <div class="modal-title">Email odeslán</div>
+            <div class="modal-body">
+                <p id="welcomeEmailSuccessMsg" style="color: var(--success-color); font-weight: 500;"></p>
+            </div>
+            <div class="modal-actions">
+                <button class="btn btn-primary" onclick="closeWelcomeEmailSuccessModal()">OK</button>
             </div>
         </div>
     </div>

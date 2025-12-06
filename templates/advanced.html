@@ -115,42 +115,6 @@
     </div>
 </div>
 
-<!-- Email Template Section -->
-<div class="settings-section" style="margin-top: 2rem;">
-    <h3>📧 Šablona emailu</h3>
-    <p class="subtitle">
-        Nastavte šablonu emailu pro odesílání členských karet uchazečům.
-    </p>
-
-    <div class="info-box"
-        style="background: #e3f2fd; border-left: 4px solid #1976d2; padding: 1rem; margin-bottom: 1.5rem; border-radius: 4px;">
-        <strong>Dostupné zástupné symboly:</strong>
-        <ul style="margin: 0.5rem 0 0 1.5rem;">
-            <li><code>{first_name}</code> - Jméno uchazeče</li>
-            <li><code>{last_name}</code> - Příjmení uchazeče</li>
-            <li><code>{membership_id}</code> - Číslo členské karty</li>
-            <li><code>{email}</code> - Email uchazeče</li>
-        </ul>
-    </div>
-
-    <form id="emailTemplateForm" style="margin-top: 1.5rem;">
-        <div class="form-group">
-            <label for="email_subject">Předmět</label>
-            <input type="text" id="email_subject" name="subject" class="form-control" placeholder="Předmět emailu..."
-                required>
-        </div>
-
-        <div class="form-group">
-            <label for="email_body">Text emailu</label>
-            <textarea id="email_body" name="body" class="form-control" rows="10" placeholder="Text emailu..."
-                required></textarea>
-        </div>
-
-        <button type="submit" class="btn btn-primary">Uložit šablonu</button>
-        <span id="templateSaveStatus" style="margin-left: 1rem; color: var(--success-color);"></span>
-    </form>
-</div>
-
 <!-- Ecomail Integration Section -->
 <div class="settings-section" style="margin-top: 2rem;">
     <h3>📧 Integrace Ecomail</h3>
@@ -276,55 +240,6 @@
 </div>
 
 <script>
-    // Load email template on page load
-    async function loadEmailTemplate() {
-        try {
-            const response = await fetch('/email/template');
-            const data = await response.json();
-
-            document.getElementById('email_subject').value = data.subject || '';
-            document.getElementById('email_body').value = data.body || '';
-        } catch (error) {
-            console.error('Error loading email template:', error);
-        }
-    }
-
-    // Save email template
-    document.getElementById('emailTemplateForm').addEventListener('submit', async function (e) {
-        e.preventDefault();
-
-        const formData = new FormData(this);
-        const statusEl = document.getElementById('templateSaveStatus');
-
-        try {
-            const response = await fetch('/email/template', {
-                method: 'POST',
-                body: formData
-            });
-
-            const result = await response.json();
-
-            if (result.success) {
-                statusEl.textContent = '✓ Šablona úspěšně uložena';
-                statusEl.style.color = 'var(--success-color)';
-
-                setTimeout(() => {
-                    statusEl.textContent = '';
-                }, 3000);
-            } else {
-                statusEl.textContent = '✗ Chyba při ukládání šablony';
-                statusEl.style.color = 'var(--danger-color)';
-            }
-        } catch (error) {
-            console.error('Error saving template:', error);
-            statusEl.textContent = '✗ Chyba při ukládání šablony';
-            statusEl.style.color = 'var(--danger-color)';
-        }
-    });
-
-    // Load template on page load
-    loadEmailTemplate();
-
     // Load changelog
     async function loadChangelog() {
         try {
