@@ -1,3 +1,10 @@
+## [1.7.1] - 2025-12-09
+
+### Změněno
+- **Uvítací email**: Snížení vertikálních mezer u sekce "Vybrané tituly" na mobilních zařízeních (úprava paddingu).
+
+---
+
 ## [1.7] - 2025-12-09
 
 ### Změněno
