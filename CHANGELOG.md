@@ -1,3 +1,10 @@
+## [1.7.2] - 2025-12-09
+
+### Změněno
+- **Uvítací email**: Odstranění zbytečných mezer (paddingů) kolem obrázku a nad/pod sekcí "Vybrané tituly" na mobilu.
+
+---
+
 ## [1.7.1] - 2025-12-09
 
 ### Změněno
