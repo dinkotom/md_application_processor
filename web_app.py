@@ -66,7 +66,7 @@ DB_PATH_PROD = os.path.join(BASE_DIR, 'applications.db')
 ECOMAIL_LIST_ID_TEST = 17
 ECOMAIL_LIST_ID_PROD = 16
 
-VERSION = '1.6'
+VERSION = '1.7'
 
 def init_db(db_path):
     """Initialize database with schema if it doesn't exist"""

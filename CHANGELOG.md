@@ -1,3 +1,13 @@
+## [1.7] - 2025-12-09
+
+### Změněno
+- **Uvítací email**: Optimalizace zobrazení na mobilních zařízeních
+  - Zvětšení písma v sekci "Vybrané tituly" (Nadpis: 20px, Text: 16px) pro lepší čitelnost
+  - Zarovnání textu na střed na malých obrazovkách
+  - Implementace pomocí **inline stylů** pro zajištění správného zobrazení ve všech emailových klientech
+
+---
+
 ## [1.6] - 2025-12-06
 
 ### Přidáno

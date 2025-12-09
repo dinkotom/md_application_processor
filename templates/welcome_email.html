@@ -96,6 +96,10 @@
             div.hide_section_on_mobile {
                 display: block !important;
             }
+
+            .desktop-text-huge {
+                font-size: 25pt !important;
+            }
         }
 
         .hide_on_desktop {
@@ -194,11 +198,33 @@
 
         @media only screen and (max-width:480px) {
             .mobile-text-large {
-                font-size: 30px !important;
+                font-size: 20px !important;
             }
 
             .mobile-text-medium {
+                font-size: 16px !important;
+            }
+
+            .mobile-text-title {
                 font-size: 20px !important;
+            }
+
+            /* Center text on mobile for better stacking appearance */
+            .mobile-center-text {
+                text-align: center !important;
+            }
+
+            /* Reduce padding on mobile */
+            .mobile-reduce-padding {
+                padding-left: 10px !important;
+                padding-right: 10px !important;
+            }
+
+
+            /* Force hybrid columns to full width on mobile */
+            .mobile-full-width {
+                width: 100% !important;
+                max-width: 100% !important;
             }
         }
     </style>
@@ -216,8 +242,8 @@
                     <tr>
                         <td style="direction:ltr;font-size:0px;padding:10px 0px 10px 0px;text-align:center;">
                             <!--[if mso | IE]><table role="presentation" border="0" cellpadding="0" cellspacing="0"><tr><td class="" style="vertical-align:top;width:300px;" ><![endif]-->
-                            <div class="mj-column-per-50 outlook-group-fix"
-                                style="font-size:0px;text-align:left;direction:ltr;display:inline-block;vertical-align:top;width:50%;">
+                            <div class="mj-column-per-50 outlook-group-fix mobile-full-width"
+                                style="font-size:0px;text-align:left;direction:ltr;display:inline-block;vertical-align:top;width:100%;max-width:290px;">
                                 <table border="0" cellpadding="0" cellspacing="0" role="presentation"
                                     style="vertical-align:top;" width="100%">
                                     <tr>
@@ -241,14 +267,14 @@
                                 </table>
                             </div>
                             <!--[if mso | IE]></td><td class="" style="vertical-align:top;width:300px;" ><![endif]-->
-                            <div class="mj-column-per-50 outlook-group-fix"
-                                style="font-size:0px;text-align:left;direction:ltr;display:inline-block;vertical-align:top;width:50%;">
+                            <div class="mj-column-per-50 outlook-group-fix mobile-full-width"
+                                style="font-size:0px;text-align:left;direction:ltr;display:inline-block;vertical-align:top;width:100%;max-width:290px;">
                                 <table border="0" cellpadding="0" cellspacing="0" role="presentation"
                                     style="vertical-align:top;" width="100%">
                                     <tr>
                                         <td align="left"
                                             style="font-size:0px;padding:25px 15px 0px 0px;word-break:break-word;">
-                                            <div
+                                            <div class="mobile-center-text"
                                                 style="font-family: 'Noto Sans Mono', monospace;font-size:13px;line-height:1.5;text-align:left;color:#000000;">
                                                 <p
                                                     style="font-family: 'Noto Sans Mono', monospace; font-size: 11px; color: #FFFFFF; line-height: 1.1; text-align: center;">
@@ -290,7 +316,7 @@
                                 <table border="0" cellpadding="0" cellspacing="0" role="presentation"
                                     style="vertical-align:top;" width="100%">
                                     <tr>
-                                        <td align="left"
+                                        <td align="left" class="mobile-reduce-padding"
                                             style="font-size:0px;padding:0px 30px 15px 30px;word-break:break-word;">
                                             <div
                                                 style="font-family: 'Noto Sans Mono', monospace;font-size:13px;line-height:1.5;text-align:left;color:#000000;">
@@ -367,8 +393,8 @@
                     <tr>
                         <td style="direction:ltr;font-size:0px;padding:10px 0px 10px 0px;text-align:center;">
                             <!--[if mso | IE]><table role="presentation" border="0" cellpadding="0" cellspacing="0"><tr><td class="" style="vertical-align:top;width:300px;" ><![endif]-->
-                            <div class="mj-column-per-50 outlook-group-fix"
-                                style="font-size:0px;text-align:left;direction:ltr;display:inline-block;vertical-align:top;width:50%;">
+                            <div class="mj-column-per-50 outlook-group-fix mobile-full-width"
+                                style="font-size:0px;text-align:left;direction:ltr;display:inline-block;vertical-align:top;width:100%;max-width:290px;">
                                 <table border="0" cellpadding="0" cellspacing="0" role="presentation"
                                     style="vertical-align:top;" width="100%">
                                     <tr>
@@ -392,23 +418,25 @@
                                 </table>
                             </div>
                             <!--[if mso | IE]></td><td class="" style="vertical-align:top;width:300px;" ><![endif]-->
-                            <div class="mj-column-per-50 outlook-group-fix"
-                                style="font-size:0px;text-align:left;direction:ltr;display:inline-block;vertical-align:top;width:50%;">
+                            <div class="mj-column-per-50 outlook-group-fix mobile-full-width"
+                                style="font-size:0px;text-align:left;direction:ltr;display:inline-block;vertical-align:top;width:100%;max-width:290px;">
                                 <table border="0" cellpadding="0" cellspacing="0" role="presentation"
                                     style="vertical-align:top;" width="100%">
                                     <tr>
                                         <td align="left"
                                             style="font-size:0px;padding:15px 15px 15px 15px;word-break:break-word;">
-                                            <div
+                                            <div class="mobile-center-text"
                                                 style="font-family: 'Noto Sans Mono', monospace;font-size:13px;line-height:1.5;text-align:left;color:#000000;">
                                                 <p
                                                     style="font-family: 'Noto Sans Mono', monospace; font-size: 11px; color: #FFFFFF;">
-                                                    <span class="mobile-text-medium" style="font-size: 25pt;">Vybrané
+                                                    <span class="mobile-text-title desktop-text-huge"
+                                                        style="font-size: 20px;">Vybrané
                                                         tituly</span>
                                                 </p>
                                                 <p
                                                     style="font-family: 'Noto Sans Mono', monospace; font-size: 11px; color: #FFFFFF;">
-                                                    <span class="mobile-text-medium" style="font-size: 25pt;"><span
+                                                    <span class="mobile-text-medium desktop-text-huge"
+                                                        style="font-size: 16px;"><span
                                                             style="color: rgb(221, 49, 117);"><span
                                                                 style="color: rgb(255, 255, 255);">za</span> fajn ceny,
                                                             <span
