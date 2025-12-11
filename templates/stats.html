@@ -82,5 +82,18 @@
         </div>
         {% endfor %}
     </div>
+    <div class="stat-card">
+        <h3>Pohlaví (odhad)</h3>
+        <div class="stat-item">
+            <span class="stat-label">Ženy:</span>
+            <span class="stat-value"><a href="{{ url_for('index', guessed_gender='female') }}">{{ gender_stats.female
+                    }}</a></span>
+        </div>
+        <div class="stat-item">
+            <span class="stat-label">Muži:</span>
+            <span class="stat-value"><a href="{{ url_for('index', guessed_gender='male') }}">{{ gender_stats.male
+                    }}</a></span>
+        </div>
+    </div>
 </div>
 {% endblock %}

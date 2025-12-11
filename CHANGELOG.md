@@ -1,3 +1,14 @@
+## [1.7.3] - 2025-12-11
+
+### Přidáno
+- **Klikatelné statistiky pohlaví**: Možnost filtrovat seznam uchazečů kliknutím na statistiky pohlaví (Muži, Ženy) na stránce statistik.
+- **Vylepšená instalace**: Aktualizovaný skript `migrate_all.py` nyní zahrnuje i migraci pro detekci pohlaví, což zjednodušuje setup aplikace.
+
+### Změněno
+- **Backend Statistik**: Logika statistik již nezobrazuje kategorii "Neznámé", pokud nejsou žádní uchazeči s neznámým pohlavím (výchozí stav je "Muž").
+
+---
+
 ## [1.7.2] - 2025-12-09
 
 ### Změněno

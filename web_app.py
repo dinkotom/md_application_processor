@@ -66,7 +66,7 @@ DB_PATH_PROD = os.path.join(BASE_DIR, 'applications.db')
 ECOMAIL_LIST_ID_TEST = 17
 ECOMAIL_LIST_ID_PROD = 16
 
-VERSION = '1.7.2'
+VERSION = '1.7.3'
 
 def init_db(db_path):
     """Initialize database with schema if it doesn't exist"""
@@ -330,6 +330,7 @@ def get_filtered_applicants(request_args):
     filter_source = request_args.get('source', '')
     filter_alerts = request_args.get('alerts', '')  # New: filter for applicants with alerts
     filter_character = request_args.get('character', '')
+    filter_guessed_gender = request_args.get('guessed_gender', '')
     sort_by = request_args.get('sort', 'id')  # Default sort by ID
     sort_order = request_args.get('order', 'desc')  # Default descending
     
@@ -353,6 +354,10 @@ def get_filtered_applicants(request_args):
     if filter_character:
         query += " AND character = ?"
         params.append(filter_character)
+
+    if filter_guessed_gender:
+        query += " AND guessed_gender = ?"
+        params.append(filter_guessed_gender)
 
     if filter_interest:
         query += " AND interests LIKE ?"
@@ -456,6 +461,7 @@ def index():
     filter_source = request.args.get('source', '')
     filter_alerts = request.args.get('alerts', '')
     filter_character = request.args.get('character', '')
+    filter_guessed_gender = request.args.get('guessed_gender', '')
     sort_by = request.args.get('sort', 'id')
     sort_order = request.args.get('order', 'desc')
 
@@ -945,6 +951,21 @@ def stats():
     
     conn.close()
     
+    # Gender stats
+    gender_stats = {
+        'male': 0,
+        'female': 0
+    }
+    
+    for app in applicants:
+        if 'guessed_gender' in app.keys():
+            g = app['guessed_gender']
+        else:
+            g = None
+            
+        if g in gender_stats:
+            gender_stats[g] += 1
+        
     return render_template('stats.html',
                          total=total,
                          age_under_15=age_under_15,
@@ -955,7 +976,8 @@ def stats():
                          schools=sorted(schools.items(), key=lambda x: x[1], reverse=True)[:10],
                          interests=sorted(interests_count.items(), key=lambda x: x[1], reverse=True)[:10],
                          sources=sorted(sources.items(), key=lambda x: x[1], reverse=True),
-                         characters=sorted(character_counts.items(), key=lambda x: x[1], reverse=True))
+                         characters=sorted(character_counts.items(), key=lambda x: x[1], reverse=True),
+                         gender_stats=gender_stats)
 
 
 @app.route('/exports')

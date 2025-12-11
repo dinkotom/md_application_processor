@@ -20,6 +20,7 @@ MIGRATIONS = [
     ('migrate_audit_log', 'migrate_audit_log'),
     ('migrate_newsletter_integer', 'migrate_newsletter_to_integer'),
     ('migrate_remove_email_template', 'migrate_database'),
+    ('migrate_gender', 'migrate_db'),
 ]
 
 def run_migrations(db_path):

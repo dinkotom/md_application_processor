@@ -1,5 +1,6 @@
 import re
 from typing import Dict, Optional
+from src.gender_utils import guess_gender
 
 def parse_email_body(body: str) -> Dict[str, str]:
     """
@@ -59,6 +60,10 @@ def parse_email_body(body: str) -> Dict[str, str]:
     newsletter_text = data.get('newsletter', '').strip()
     data['newsletter'] = 1 if not newsletter_text else 0
 
+    # Guess Gender
+    # Guess Gender
+    data['guessed_gender'] = guess_gender(data.get('first_name', ''), data.get('last_name', ''))
+
     # Store the full body for the document
     data['full_body'] = body
     
@@ -108,6 +113,7 @@ def parse_csv_row(row: Dict[str, str]) -> Dict[str, str]:
         'message': row.get('volne_sdeleni', '').strip(),
         'color': row.get('barvy', '').strip(),
         'newsletter': newsletter_value,
+        'guessed_gender': guess_gender(row.get('jmeno', '').strip(), row.get('prijmeni', '').strip()),
         'full_body': ''  # CSV imports don't have email body
     }
 

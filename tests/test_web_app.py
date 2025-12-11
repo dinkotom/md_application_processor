@@ -48,6 +48,7 @@ class TestWebApp(unittest.TestCase):
                 exported_to_ecomail INTEGER DEFAULT 0,
                 exported_at TIMESTAMP,
                 application_received TIMESTAMP,
+                guessed_gender TEXT,
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                 UNIQUE(first_name, last_name, email)
             );
@@ -266,6 +267,40 @@ class TestWebApp(unittest.TestCase):
         dob = conn.execute('SELECT dob FROM applicants WHERE id = 1').fetchone()[0]
         conn.close()
         self.assertEqual(dob, '15.03.2005')
+
+    def test_filter_by_gender(self):
+        """Test filtering applicants by guessed gender"""
+        conn = sqlite3.connect(self.db_path)
+        # Add male applicant
+        conn.execute('''
+            INSERT INTO applicants (first_name, last_name, email, guessed_gender, status)
+            VALUES (?, ?, ?, ?, ?)
+        ''', ('Adam', 'Muž', 'adam@example.com', 'male', 'Nová'))
+        # Add female applicant
+        conn.execute('''
+            INSERT INTO applicants (first_name, last_name, email, guessed_gender, status)
+            VALUES (?, ?, ?, ?, ?)
+        ''', ('Eva', 'Žena', 'eva@example.com', 'female', 'Nová'))
+        # Add unknown gender applicant
+        conn.execute('''
+            INSERT INTO applicants (first_name, last_name, email, guessed_gender, status)
+            VALUES (?, ?, ?, ?, ?)
+        ''', ('X', 'Neznámý', 'x@example.com', 'unknown', 'Nová'))
+        conn.commit()
+        conn.close()
+        
+        # Filter for male
+        response = self.client.get('/?guessed_gender=male')
+        self.assertEqual(response.status_code, 200)
+        self.assertIn(b'Adam', response.data)
+        self.assertNotIn(b'Eva', response.data)
+        
+        # Filter for female
+        response = self.client.get('/?guessed_gender=female')
+        self.assertEqual(response.status_code, 200)
+        self.assertNotIn(b'Adam', response.data)
+        self.assertIn(b'Eva', response.data)
+
 
 if __name__ == '__main__':
     unittest.main()
