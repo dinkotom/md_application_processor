@@ -1,0 +1,3 @@
+styled applicant invitation email
+extend statistics by character
+deploy to a public server

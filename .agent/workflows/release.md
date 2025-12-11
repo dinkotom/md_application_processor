@@ -26,4 +26,4 @@ description: Release the application
 
 6.  **Git Tag**:
     -   Create a tag for the new version: `git tag v<VERSION>`
-    -   (Optional) Push changes: `git push && git push --tags`
+    -   Push changes: `git push && git push --tags`

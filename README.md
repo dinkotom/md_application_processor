@@ -105,4 +105,4 @@ md_application_processor/
 
 ## Version
 
-Current Version: **1.7.3**
+Current Version: **1.7.4**

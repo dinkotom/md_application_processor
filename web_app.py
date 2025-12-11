@@ -66,7 +66,7 @@ DB_PATH_PROD = os.path.join(BASE_DIR, 'applications.db')
 ECOMAIL_LIST_ID_TEST = 17
 ECOMAIL_LIST_ID_PROD = 16
 
-VERSION = '1.7.3'
+VERSION = '1.7.4'
 
 def init_db(db_path):
     """Initialize database with schema if it doesn't exist"""
@@ -1108,7 +1108,7 @@ def update_applicant_field(id):
     field = data.get('field')
     value = data.get('value')
     
-    allowed_fields = ['first_name', 'last_name', 'email', 'phone', 'dob', 'status']
+    allowed_fields = ['first_name', 'last_name', 'email', 'phone', 'dob', 'status', 'guessed_gender']
     
     if field not in allowed_fields:
         return jsonify({'success': False, 'error': 'Invalid field'}), 400

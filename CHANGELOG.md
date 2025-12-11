@@ -1,3 +1,14 @@
+## [1.7.4] - 2025-12-11
+
+### Přidáno
+- **Editace pohlaví**: Možnost ručně upravit odhadované pohlaví přímo na detailu uchazeče.
+- **Třetí možnost pohlaví**: Přidána možnost "Neuvedeno" pro případy, kdy pohlaví není známé nebo jej nelze určit.
+
+### Změněno
+- **Bezpečnější migrace**: Skript pro detekci pohlaví (migrace) nyní respektuje již existující hodnoty a nepřepisuje manuální změny.
+
+---
+
 ## [1.7.3] - 2025-12-11
 
 ### Přidáno

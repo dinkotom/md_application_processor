@@ -24,8 +24,8 @@ def migrate_db(db_path):
             print(f"Error adding column: {e}")
             return
 
-    # 2. Update existing records
-    cursor.execute("SELECT id, first_name, last_name FROM applicants")
+    # 2. Update existing records (only if missing)
+    cursor.execute("SELECT id, first_name, last_name FROM applicants WHERE guessed_gender IS NULL OR guessed_gender = ''")
     rows = cursor.fetchall()
     
     print(f"Updating {len(rows)} records...")
