@@ -66,7 +66,8 @@ DB_PATH_PROD = os.path.join(BASE_DIR, 'applications.db')
 ECOMAIL_LIST_ID_TEST = 17
 ECOMAIL_LIST_ID_PROD = 16
 
-VERSION = '1.7.4'
+# App configuration
+VERSION = '1.8.0'
 
 def init_db(db_path):
     """Initialize database with schema if it doesn't exist"""
@@ -1462,218 +1463,102 @@ def get_changelog():
     
     return jsonify({'content': changelog_html})
 
-@app.route('/export/csv')
-def export_csv():
-    """Export applicants to CSV file"""
-    import csv
+
+@app.route('/export/excel', methods=['POST'])
+@login_required
+def export_excel():
+    """Export selected fields to Excel"""
     import io
-    from flask import make_response
+    import openpyxl
+    from flask import send_file
     
-    # Get status filter from query params
-    status_filter = request.args.get('status', '')
+    # Get selected fields from form
+    selected_fields = request.form.getlist('fields')
     
-    # Get all applicants from database
-    conn = sqlite3.connect(get_db_path())
-    conn.row_factory = sqlite3.Row
-    cursor = conn.cursor()
-    
-    if status_filter:
-        cursor.execute('SELECT * FROM applicants WHERE deleted = 0 AND status = ? ORDER BY id DESC', (status_filter,))
-    else:
-        cursor.execute('SELECT * FROM applicants WHERE deleted = 0 ORDER BY id DESC')
-    
-    applicants = cursor.fetchall()
+    if not selected_fields:
+        # Default fallback if nothing selected
+        selected_fields = ['first_name', 'last_name', 'email']
+        
+    # Get all applicants (not deleted)
+    conn = get_db_connection()
+    applicants = conn.execute('SELECT * FROM applicants WHERE deleted = 0 ORDER BY id DESC').fetchall()
     conn.close()
     
-    # Create CSV in memory
-    output = io.StringIO()
-    writer = csv.writer(output)
+    # Field definitions (mapping to human readable names)
+    field_map = {
+        'id': 'ID',
+        'first_name': 'Jméno',
+        'last_name': 'Příjmení',
+        'email': 'Email',
+        'phone': 'Telefon',
+        'dob': 'Datum narození',
+        'guessed_gender': 'Pohlaví (odhad)',
+        'membership_id': 'Členské číslo',
+        'city': 'Město',
+        'school': 'Škola',
+        'interests': 'Zájmy',
+        'character': 'Povaha',
+        'frequency': 'Frekvence',
+        'source': 'Zdroj',
+        'source_detail': 'Detail zdroje',
+        'message': 'Vzkaz',
+        'color': 'Barva',
+        'newsletter': 'Newsletter',
+        'status': 'Status',
+        'created_at': 'Vytvořeno',
+        'application_received': 'Přihláška přijata'
+    }
     
-    # Write header
-    writer.writerow([
-        'ID', 'Jméno', 'Příjmení', 'Email', 'Telefon', 'Datum narození',
-        'Členské číslo', 'Město', 'Škola', 'Zájmy', 'Povaha', 'Frekvence',
-        'Zdroj', 'Detail zdroje', 'Vzkaz', 'Barva', 'Newsletter', 'Status',
-        'Vytvořeno', 'Přihláška přijata'
-    ])
+    # Create Workbook
+    wb = openpyxl.Workbook()
+    ws = wb.active
+    ws.title = "Přihlášky"
     
-    # Write data rows
+    # Write Header
+    headers = [field_map.get(f, f) for f in selected_fields]
+    ws.append(headers)
+    
+    # Style Header
+    for cell in ws[1]:
+        cell.font = openpyxl.styles.Font(bold=True)
+        
+    # Write Data
     for app in applicants:
-        writer.writerow([
-            app['id'],
-            app['first_name'],
-            app['last_name'],
-            app['email'],
-            app['phone'],
-            app['dob'],
-            app['membership_id'],
-            app['city'],
-            app['school'],
-            app['interests'],
-            app['character'],
-            app['frequency'],
-            app['source'],
-            app['source_detail'],
-            app['message'],
-            app['color'],
-            'Ano' if app['newsletter'] == 1 else 'Ne',
-            app['status'],
-            app['created_at'],
-            app.get('application_received', '')
-        ])
-    
-    # Create response
-    output.seek(0)
-    response = make_response(output.getvalue())
-    response.headers['Content-Disposition'] = f'attachment; filename=prihlasky_{status_filter if status_filter else "vsechny"}.csv'
-    response.headers['Content-Type'] = 'text/csv; charset=utf-8'
-    
-    return response
-
-@app.route('/exports/ecomail/lists')
-def get_ecomail_lists_for_export():
-    """Get Ecomail lists for bulk export dropdown"""
-    from src.ecomail import EcomailClient
-    
-    try:
-        client = EcomailClient()
-        result = client.get_lists()
-        
-        if result['success']:
-            return jsonify({
-                'success': True,
-                'lists': result.get('data', [])
-            })
-        else:
-            return jsonify({
-                'success': False,
-                'error': result.get('error', 'Failed to fetch lists')
-            })
-    except Exception as e:
-        logger.error(f"Error fetching Ecomail lists for export: {e}")
-        return jsonify({
-            'success': False,
-            'error': str(e)
-        })
-
-@app.route('/exports/ecomail/bulk', methods=['POST'])
-def bulk_export_to_ecomail():
-    """Bulk export applicants to Ecomail"""
-    from src.ecomail import EcomailClient
-    
-    try:
-        data = request.get_json()
-        list_id = data.get('list_id')
-        
-        if not list_id:
-            return jsonify({'success': False, 'error': 'List ID is required'})
-        
-        # Get all applicants (not deleted)
-        conn = sqlite3.connect(get_db_path())
-        conn.row_factory = sqlite3.Row
-        cursor = conn.cursor()
-        
-        cursor.execute('SELECT * FROM applicants WHERE deleted = 0 ORDER BY id DESC')
-        
-        applicants = cursor.fetchall()
-        conn.close()
-        
-        if not applicants:
-            return jsonify({
-                'success': False,
-                'error': 'Žádné přihlášky k exportu'
-            })
-        
-        # Initialize Ecomail client
-        client = EcomailClient()
-        
-        created_count = 0
-        updated_count = 0
-        error_count = 0
-        
-        # Export each applicant
-        for app in applicants:
-            try:
-                # Prepare subscriber data
-                tags = []
-                if app['interests']:
-                    # Split by comma and strip whitespace
-                    interest_tags = [i.strip() for i in app['interests'].split(',')]
-                    # Ensure no commas remain in individual tags (replace with hyphen if any)
-                    interest_tags = [t.replace(',', ' -') for t in interest_tags if t]
-                    tags.extend(interest_tags)
-                if app['source']:
-                    # Replace comma with hyphen in source tag
-                    source_val = app['source'].replace(',', ' -')
-                    tags.append(f"Zdroj: {source_val}")
-                
-                # Final safety check: remove any remaining commas from all tags
-                tags = [t.replace(',', ' -') for t in tags]
-                
-                subscriber_data = {
-                    'email': app['email'],
-                    'name': f"{app['first_name']} {app['last_name']}",
-                    'surname': app['last_name'],
-                    'vokativ': app['first_name'],
-                    'tags': tags
-                }
-                
-                # Add custom fields if present
-                if app['membership_id']:
-                    subscriber_data['CLENSKE_CISLO'] = app['membership_id']
-                if app['city']:
-                    subscriber_data['city'] = app['city']
-                if app['phone']:
-                    subscriber_data['phone'] = app['phone']
-                
-                # Check if subscriber exists
-                existing = client.get_subscriber(app['email'])
-                is_update = existing.get('success') and existing.get('data')
-                
-                # For new subscribers, use their newsletter consent from database
-                # For existing subscribers, pass None to preserve their current status
-                newsletter_status_param = None if is_update else (app['newsletter'] if app['newsletter'] is not None else 1)
-                
-                # Create/update subscriber
-                result = client.create_subscriber(
-                    list_id, 
-                    subscriber_data, 
-                    newsletter_status=newsletter_status_param
-                )
-                
-                if result['success']:
-                    if is_update:
-                        updated_count += 1
-                        # Log action
-                        if 'user' in session:
-                             log_action(app['id'], "Aktualizace v Ecomailu (Hromadná)", session['user']['email'])
-                    else:
-                        created_count += 1
-                        # Log action
-                        if 'user' in session:
-                             log_action(app['id'], "Export do Ecomailu (Hromadná)", session['user']['email'])
+        row = []
+        for field in selected_fields:
+            if field == 'newsletter':
+                val = 'Ano' if app['newsletter'] == 1 else 'Ne'
+            elif field == 'guessed_gender':
+                g_val = app['guessed_gender']
+                if g_val == 'male':
+                    val = 'muž'
+                elif g_val == 'female':
+                    val = 'žena'
                 else:
-                    error_count += 1
-                    logger.warning(f"Failed to export applicant {app['id']}: {result.get('error')}")
-                    
-            except Exception as e:
-                error_count += 1
-                logger.error(f"Error exporting applicant {app['id']}: {e}")
+                    val = 'neuvedeno'
+            else:
+                val = app[field]
+            row.append(val)
+        ws.append(row)
         
-        return jsonify({
-            'success': True,
-            'created': created_count,
-            'updated': updated_count,
-            'errors': error_count,
-            'total': len(applicants)
-        })
+    # Auto-adjust column widths
+    for i, column_cells in enumerate(ws.columns, start=1):
+        length = max(len(str(cell.value) or "") for cell in column_cells)
+        # Add a little padding
+        ws.column_dimensions[openpyxl.utils.get_column_letter(i)].width = min(length + 2, 50)
         
-    except Exception as e:
-        logger.error(f"Bulk export error: {e}")
-        return jsonify({
-            'success': False,
-            'error': str(e)
-        })
+    # Save to buffer
+    buffer = io.BytesIO()
+    wb.save(buffer)
+    buffer.seek(0)
+    
+    return send_file(
+        buffer,
+        as_attachment=True,
+        download_name='prihlasky_export.xlsx',
+        mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+    )
+
 
 if __name__ == '__main__':
     # Initialize databases

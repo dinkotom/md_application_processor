@@ -34,6 +34,8 @@
                         class="{% if request.endpoint == 'index' %}active{% endif %}">Přihlášky</a>
                     <a href="{{ url_for('stats') }}"
                         class="{% if request.endpoint == 'stats' %}active{% endif %}">Statistiky</a>
+                    <a href="{{ url_for('exports') }}"
+                        class="{% if request.endpoint == 'exports' %}active{% endif %}">Exporty</a>
                     <a href="{{ url_for('advanced') }}"
                         class="{% if request.endpoint == 'advanced' %}active{% endif %}">Pokročilé</a>
                 </div>

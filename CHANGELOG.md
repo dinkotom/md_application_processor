@@ -1,3 +1,24 @@
+## [1.8.0] - 2025-12-12
+
+### Přidáno
+- **Export do Excelu s Drag & Drop**:
+  - Nový moderní interface pro export přihlášek.
+  - Možnost výběru specifických polí pro export.
+  - **Drag & Drop řazení**: Uživatel si může určit pořadí sloupců v Excelu přetažením položek.
+  - Překlad hodnot (např. pohlaví: male -> muž, female -> žena).
+
+### Odebráno
+- **Legacy Exporty**: Odstraněn zastaralý export do CSV a hromadný export do Ecomailu z rozhraní i backendu.
+
+### Instalace pro tento release
+> [!IMPORTANT]
+> Pro správnou funkci exportů je nutné nainstalovat nové závislosti:
+> ```bash
+> pip3 install -r requirements.txt
+> ```
+
+---
+
 ## [1.7.4] - 2025-12-11
 
 ### Přidáno
