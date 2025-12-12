@@ -1,11 +1,3 @@
-## [1.8.1] - 2025-12-12
-### Opraveno
-- **OAuth Login Error**: Opravena chyba `MismatchingStateError` při přihlašování přes Google na produkci.
-  - Aplikace nyní používá `ProxyFix` pro správnou detekci HTTPS schématu za proxy.
-  - Vylepšená konfigurace session cookies (Secure=True na produkci).
-
----
-
 ## [1.8.0] - 2025-12-12
 
 ### Přidáno

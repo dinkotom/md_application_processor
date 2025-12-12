@@ -15,7 +15,7 @@ from functools import wraps
 
 load_dotenv()
 
-from werkzeug.middleware.proxy_fix import ProxyFix
+import logging
 
 # Configure logging
 logging.basicConfig(
@@ -29,9 +29,6 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 app = Flask(__name__)
-# Apply ProxyFix to handle HTTPS headers correctly behind proxies (e.g. PythonAnywhere)
-app.wsgi_app = ProxyFix(app.wsgi_app, x_proto=1, x_host=1)
-
 app.secret_key = os.environ.get('SECRET_KEY', 'dev-secret-key-change-in-production')
 
 # Allow OAuth over HTTP for development (set to '0' in production with HTTPS)
@@ -40,7 +37,7 @@ if 'OAUTHLIB_INSECURE_TRANSPORT' not in os.environ:
 
 # Session configuration
 app.config.update(
-    SESSION_COOKIE_SECURE=True if os.environ.get('OAUTHLIB_INSECURE_TRANSPORT') != '1' else False,
+    SESSION_COOKIE_SECURE=False,
     SESSION_COOKIE_HTTPONLY=True,
     SESSION_COOKIE_SAMESITE='Lax',
 )
@@ -70,7 +67,7 @@ ECOMAIL_LIST_ID_TEST = 17
 ECOMAIL_LIST_ID_PROD = 16
 
 # App configuration
-VERSION = '1.8.1'
+VERSION = '1.8.0'
 
 def init_db(db_path):
     """Initialize database with schema if it doesn't exist"""
