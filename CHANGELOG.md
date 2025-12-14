@@ -1,3 +1,10 @@
+## [1.8.1] - 2025-12-14
+
+### Opraveno
+- **Duplicitní stahování**: Opravena chyba v UI, kdy bylo možné dvojklikem na potvrzovací tlačítko spustit proces stahování/importu (Email i CSV) dvakrát, což vedlo k duplicitním datům. Tlačítka se nyní po kliknutí okamžitě deaktivují.
+
+---
+
 ## [1.8.0] - 2025-12-12
 
 ### Přidáno
@@ -12,9 +19,10 @@
 
 ### Instalace pro tento release
 > [!IMPORTANT]
-> Pro správnou funkci exportů je nutné nainstalovat nové závislosti:
+> Pro správnou funkci exportů je nutné nainstalovat nové závislosti (ujistěte se, že máte aktivní virtuální prostředí):
 > ```bash
-> pip3 install -r requirements.txt
+> source venv/bin/activate
+> pip install -r requirements.txt
 > ```
 
 ---

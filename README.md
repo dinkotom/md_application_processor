@@ -30,9 +30,16 @@ A Python web application for managing club membership applications. It automates
     cd md_application_processor
     ```
 
-2.  **Install dependencies**:
+2.  **Set up Virtual Environment & Install dependencies**:
     ```bash
-    pip3 install -r requirements.txt
+    # Create venv if not exists
+    python3 -m venv venv
+    
+    # Activate venv
+    source venv/bin/activate
+    
+    # Install dependencies
+    pip install -r requirements.txt
     ```
 
 3.  **Run Migrations**:
@@ -105,4 +112,4 @@ md_application_processor/
 
 ## Version
 
-Current Version: **1.7.4**
+Current Version: **1.8.1**
