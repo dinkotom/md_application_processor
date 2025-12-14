@@ -1,3 +1,11 @@
+## [1.8.3] - 2025-12-14
+
+### Opraveno
+- **Deployment**: Opraveno načítání šablony uvítacího emailu na produkčním serveru (PythonAnywhere). Implementováno robustnější vyhledávání cesty k souboru šablony.
+- **Diagnostika**: Přidáno zobrazení cesty k souboru šablony v případě chyby načítání na stránce Pokročilé.
+
+---
+
 ## [1.8.2] - 2025-12-14
 
 ### Přidáno

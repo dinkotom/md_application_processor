@@ -111,4 +111,4 @@ md_application_processor/
 -   **Database locked**: Ensure no other process (like an open SQLite browser) is holding a lock on the database file.
 
 ## Version
-Current Version: **1.8.2**
+Current Version: **1.8.3**

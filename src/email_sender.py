@@ -54,25 +54,31 @@ def render_html_email_template(template_html, applicant_data):
     return result
 
 
-def load_welcome_email_template():
+def load_welcome_email_template(root_path=None):
     """
     Load the welcome email HTML template
     
+    Args:
+        root_path: Optional root path to search for templates
+        
     Returns:
-        HTML template string or None if not found
+        tuple: (HTML template string, path_used) - content is None if not found
     """
-    template_path = os.path.join(
-        os.path.dirname(os.path.dirname(__file__)),
-        'templates',
-        'welcome_email.html'
-    )
+    if root_path:
+        template_path = os.path.join(root_path, 'templates', 'welcome_email.html')
+    else:
+        template_path = os.path.join(
+            os.path.dirname(os.path.dirname(__file__)),
+            'templates',
+            'welcome_email.html'
+        )
     
     try:
         with open(template_path, 'r', encoding='utf-8') as f:
-            return f.read()
+            return f.read(), template_path
     except FileNotFoundError:
         print(f"Warning: Welcome email template not found at {template_path}")
-        return None
+        return None, template_path
 
 
 def get_recipient_email(applicant_email, mode):

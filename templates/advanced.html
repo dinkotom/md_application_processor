@@ -224,6 +224,28 @@
     </div>
 </div>
 
+<!-- Welcome Email Preview -->
+<div class="settings-section" style="margin-top: 2rem;">
+    <h3>📧 Náhled uvítacího emailu</h3>
+    <p class="subtitle">
+        Aktuální podoba uvítacího emailu, který je odesílán uchazečům
+    </p>
+
+    <div style="margin-top: 1.5rem; background: #f8f9fa; padding: 1rem; border-radius: 8px; border: 1px solid #dee2e6;">
+        {% if welcome_email_preview %}
+        <iframe srcdoc="{{ welcome_email_preview }}"
+            style="width: 100%; height: 600px; border: none; background: white;"></iframe>
+        {% else %}
+        <div style="padding: 2rem; text-align: center; color: #dc3545;">
+            <p>Nepodařilo se načíst šablonu emailu.</p>
+            <p style="font-size: 0.8rem; color: #6c757d; margin-top: 0.5rem;">
+                Hledaná cesta: <code>{{ welcome_email_path }}</code>
+            </p>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
 <!-- Changelog Section -->
 <div class="settings-section" style="margin-top: 2rem;">
     <h3>📋 Historie změn</h3>
@@ -318,10 +340,33 @@
     }
 
     function confirmImport() {
+        // Disable buttons to prevent double-click
+        const confirmBtn = document.querySelector('#importModal .btn-primary');
+        const cancelBtn = document.querySelector('#importModal .btn-secondary');
+
+        if (confirmBtn) {
+            confirmBtn.disabled = true;
+            confirmBtn.innerHTML = '<span style="margin-right: 0.5rem;">⏳</span> Pracuji...';
+        }
+        if (cancelBtn) {
+            cancelBtn.disabled = true;
+        }
+
         fetch('{{ url_for("import_confirm") }}', {
             method: 'POST'
         }).then(() => {
             window.location.href = '{{ url_for("index") }}';
+        }).catch(error => {
+            console.error('Error confirming import:', error);
+            alert('Chyba při importu: ' + error);
+            // Re-enable buttons on error
+            if (confirmBtn) {
+                confirmBtn.disabled = false;
+                confirmBtn.innerHTML = 'Pokračovat';
+            }
+            if (cancelBtn) {
+                cancelBtn.disabled = false;
+            }
         });
     }
 
