@@ -68,7 +68,7 @@ ECOMAIL_LIST_ID_PROD = 16
 
 # App configu
 # Version
-VERSION = '1.8.1'
+VERSION = '1.8.2'
 
 def init_db(db_path):
     """Initialize database with schema if it doesn't exist"""
@@ -989,11 +989,16 @@ def exports():
                          version=VERSION, 
                          current_mode=session.get('mode', 'test'))
 
+
 @app.route('/advanced')
 @login_required
 def advanced():
     """Advanced settings page"""
     from src.ecomail import EcomailClient
+    from src.email_sender import load_welcome_email_template
+    
+    # Load welcome email template for preview
+    welcome_email_preview = load_welcome_email_template()
     
     # Fetch Ecomail lists
     ecomail_lists = None
@@ -1013,7 +1018,8 @@ def advanced():
     
     return render_template('advanced.html', 
                          ecomail_lists=ecomail_lists,
-                         ecomail_error=ecomail_error)
+                         ecomail_error=ecomail_error,
+                         welcome_email_preview=welcome_email_preview)
 
 # Soft delete endpoint
 @app.route('/applicant/<int:id>/delete', methods=['POST'])

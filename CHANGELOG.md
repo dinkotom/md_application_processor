@@ -1,3 +1,10 @@
+## [1.8.2] - 2025-12-14
+
+### Přidáno
+- **Náhled uvítacího emailu**: Přidána sekce na stránku "Pokročilé" (Advanced), která zobrazuje aktuální podobu uvítacího emailu, který je odesílán uchazečům. Slouží pro rychlou kontrolu vzhledu šablony.
+
+---
+
 ## [1.8.1] - 2025-12-14
 
 ### Opraveno
