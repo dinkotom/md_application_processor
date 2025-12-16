@@ -87,7 +87,8 @@
         </div>
         <div class="modal-actions">
             <button class="btn btn-secondary" onclick="closeClearDbModal()">Zrušit</button>
-            <form id="clearDbForm" action="{{ url_for('clear_database') }}" method="POST" style="display: inline;">
+            <form id="clearDbForm" action="{{ url_for('settings.clear_database') }}" method="POST"
+                style="display: inline;">
                 <button type="button" class="btn" style="background-color: #dc3545; color: white;"
                     onclick="submitClearDb()">Ano, smazat vše</button>
             </form>
@@ -265,7 +266,7 @@
     // Load changelog
     async function loadChangelog() {
         try {
-            const response = await fetch('/changelog');
+            const response = await fetch('{{ url_for("settings.changelog") }}');
             const data = await response.json();
             document.getElementById('changelogContent').innerHTML = data.content;
         } catch (error) {
@@ -305,7 +306,7 @@
         formData.append('csv_file', file);
 
         try {
-            const response = await fetch('{{ url_for("import_preview") }}', {
+            const response = await fetch('{{ url_for("settings.import_preview") }}', {
                 method: 'POST',
                 body: formData
             });
@@ -352,13 +353,18 @@
             cancelBtn.disabled = true;
         }
 
-        fetch('{{ url_for("import_confirm") }}', {
+        fetch('{{ url_for("settings.import_confirm") }}', {
             method: 'POST'
-        }).then(() => {
-            window.location.href = '{{ url_for("index") }}';
+        }).then(async response => {
+            if (response.ok) {
+                window.location.href = '{{ url_for("applicants.index") }}';
+            } else {
+                const data = await response.json();
+                throw new Error(data.error || 'Import failed');
+            }
         }).catch(error => {
             console.error('Error confirming import:', error);
-            alert('Chyba při importu: ' + error);
+            alert('Chyba při importu: ' + error.message);
             // Re-enable buttons on error
             if (confirmBtn) {
                 confirmBtn.disabled = false;
@@ -426,7 +432,7 @@
             formData.append('from_email', fromEmail);
             formData.append('reply_to', replyTo);
 
-            const response = await fetch('/ecomail/create_list', {
+            const response = await fetch('{{ url_for("settings.ecomail_create_list") }}', {
                 method: 'POST',
                 body: formData
             });
@@ -461,7 +467,7 @@
             const formData = new FormData();
             formData.append('email', email);
 
-            const response = await fetch('/ecomail/subscriber', {
+            const response = await fetch('{{ url_for("settings.ecomail_subscriber") }}', {
                 method: 'POST',
                 body: formData
             });

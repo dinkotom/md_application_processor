@@ -45,7 +45,7 @@ A Python web application for managing club membership applications. It automates
 3.  **Run Migrations**:
     Ensure your database schema is up to date by running the migration script. This applies to both new installations and updates.
     ```bash
-    python3 migrate_all.py
+    python3 migrations/migrate_all.py
     ```
 
 4.  **Configure Environment**:

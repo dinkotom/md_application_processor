@@ -25,7 +25,7 @@
 
             <button onclick="confirmWelcomeEmail({{ applicant.id }})" class="btn btn-secondary btn-small" id="emailBtn">
                 {% if applicant.email_sent %}
-                📧 Poslat znovu (odesláno {{ applicant.email_sent_at }})
+                📧 Poslat znovu (odesláno {{ applicant.email_sent_at | datetime_cz_minutes }})
                 {% else %}
                 📧 Poslat uvítací email
                 {% endif %}
@@ -42,14 +42,15 @@
         <div style="display: flex; gap: 0.5rem; flex-wrap: wrap; align-items: center; border-left: 1px solid var(--border-color); padding-left: 1rem;"
             class="nav-actions">
             {% if prev_id %}
-            <a href="{{ url_for('applicant_detail', id=prev_id, **back_args) }}" class="btn btn-secondary btn-small"
+            <a href="{{ url_for('applicants.detail', id=prev_id, **back_args) }}" class="btn btn-secondary btn-small"
                 title="Předchozí">←</a>
             {% endif %}
 
-            <a href="{{ url_for('index', **back_args) }}" class="btn btn-secondary btn-small">Zpět na seznam</a>
+            <a href="{{ url_for('applicants.index', **back_args) }}" class="btn btn-secondary btn-small">Zpět na
+                seznam</a>
 
             {% if next_id %}
-            <a href="{{ url_for('applicant_detail', id=next_id, **back_args) }}" class="btn btn-secondary btn-small"
+            <a href="{{ url_for('applicants.detail', id=next_id, **back_args) }}" class="btn btn-secondary btn-small"
                 title="Následující">→</a>
             {% endif %}
         </div>
@@ -118,7 +119,6 @@
         overflow-wrap: break-word;
         background: #fafafa;
     }
-    }
 </style>
 
 <script>
@@ -126,28 +126,120 @@
     let isEcomailUpdate = false;
     let currentEmailId = null;
 
-    function exportToEcomail(id) {
+    async function exportToEcomail(id) {
         currentEcomailId = id;
         const btn = document.getElementById('exportBtn');
         const originalText = btn.innerHTML;
-        isEcomailUpdate = originalText.includes('Aktualizovat');
 
-        const listName = '{{ ecomail_list_name|safe }}';
-        const confirmMsg = isEcomailUpdate
-            ? `Opravdu chcete aktualizovat tohoto uchazeče v Ecomailu (seznam ${listName})?`
-            : `Opravdu chcete exportovat tohoto uchazeče do Ecomailu (seznam ${listName})?`;
+        // Show loading state
+        btn.disabled = true;
+        btn.innerHTML = '⏳ Kontroluji Ecomail...';
 
-        document.getElementById('ecomailConfirmMsg').textContent = confirmMsg;
+        try {
+            // Check status first
+            const response = await fetch(`/applicant/${id}/check_ecomail`);
+            const result = await response.json();
 
-        const modal = document.getElementById('ecomailModal');
-        modal.style.display = 'flex';
-        modal.offsetHeight; // Trigger reflow
-        modal.classList.add('active');
+            btn.disabled = false;
+            btn.innerHTML = originalText;
+
+            if (!result.success) {
+                alert('Chyba při kontrole: ' + (result.error || 'Neznámá chyba'));
+                return;
+            }
+
+            const listName = result.list_id === '16' ? '16 (Production)' : '17 (Test)';
+            let confirmMsg = '';
+
+            if (result.exists) {
+                isEcomailUpdate = true;
+
+                // Server-side comparison used
+                const diff = result.diff;
+                const hasChanges = result.has_changes;
+                let rows = '';
+
+                diff.forEach(row => {
+                    const bgStyle = row.is_diff ? 'background-color: #fff3cd;' : '';
+                    rows += `<tr style="${bgStyle}">
+                        <td style="padding:5px; font-weight:600;">${row.label}</td>
+                        <td style="padding:5px; color:#666; word-break: break-all;">${row.existing}</td>
+                        <td style="padding:5px; font-weight:600; word-break: break-all;">${row.proposed}</td>
+                     </tr>`;
+                });
+
+                const changeStatus = hasChanges
+                    ? '<strong style="color: #856404;">⚠️ Byla nalezena data k aktualizaci</strong>'
+                    : '<strong style="color: green;">✓ Data jsou shodná</strong>';
+
+                confirmMsg = `<strong>Uchazeč již v Ecomailu existuje.</strong><br>
+                               (Seznam ${listName})<br><br>
+                               ${changeStatus}<br>
+                               <div style="overflow-x: auto; margin-top:10px; border:1px solid #eee;">
+                                   <table style="width:100%; border-collapse: collapse; font-size:0.9em; table-layout: fixed;">
+                                     <thead>
+                                       <tr style="background:#f5f5f5; text-align:left;">
+                                         <th style="padding:8px 5px; width: 25%;">Pole</th>
+                                         <th style="padding:8px 5px; width: 37%;">Ecomail</th>
+                                         <th style="padding:8px 5px; width: 38%;">Nová hodnota</th>
+                                       </tr>
+                                     </thead>
+                                     <tbody>
+                                       ${rows}
+                                     </tbody>
+                                   </table>
+                               </div>`;
+
+                if (hasChanges) {
+                    confirmMsg += `<div style="margin-top:10px; font-size:0.9em;">Chcete provést aktualizaci?</div>`;
+                    // Ensure confirm button is visible
+                    document.getElementById('ecomailConfirmBtn').style.display = 'inline-block';
+                } else {
+                    confirmMsg += `<div style="margin-top:10px; color: green;">Není třeba provádět žádnou akci.</div>`;
+                    // Hide confirm button
+                    document.getElementById('ecomailConfirmBtn').style.display = 'none';
+                }
+
+            } else {
+                isEcomailUpdate = false;
+                // Format tags nicely
+                const tagsHtml = result.proposed_data.tags.length > 0 ? result.proposed_data.tags.join(', ') : '<em>Žádné</em>';
+
+                confirmMsg = `<strong>✨ Vytvořit nového uchazeče</strong><br>
+                               (Seznam ${listName})<br><br>
+                               Budou odeslána následující data:<br>
+                               <div style="text-align: left; font-size: 0.9em; margin-top: 10px; background: #f5f5f5; padding: 10px; border-radius: 4px;">
+                                 <div><strong>Email:</strong> ${result.proposed_data.email}</div>
+                                 <div style="margin-top:5px;"><strong>Jméno:</strong> ${result.proposed_data.name} ${result.proposed_data.surname}</div>
+                                 <div style="margin-top:5px;"><strong>Narození:</strong> ${result.proposed_data.birthday || 'N/A'}</div>
+                                 <div style="margin-top:5px;"><strong>Tags:</strong> ${tagsHtml}</div>
+                                 <div style="margin-top:5px;"><strong>Členské číslo:</strong> ${result.proposed_data.custom_fields.MEMBERSHIP_ID || '-'}</div>
+                               </div>`;
+
+                // Always show confirm button for new export
+                document.getElementById('ecomailConfirmBtn').style.display = 'inline-block';
+            }
+
+            document.getElementById('ecomailConfirmMsg').innerHTML = confirmMsg;
+
+            const modal = document.getElementById('ecomailModal');
+            modal.style.display = 'flex';
+            modal.offsetHeight; // Trigger reflow
+            modal.classList.add('active');
+            document.body.style.overflow = 'hidden'; // Lock Body Scroll
+
+        } catch (error) {
+            console.error(error);
+            btn.disabled = false;
+            btn.innerHTML = originalText;
+            alert('Chyba při komunikaci se serverem.');
+        }
     }
 
     function closeEcomailModal() {
         const modal = document.getElementById('ecomailModal');
         modal.classList.remove('active');
+        document.body.style.overflow = ''; // Unlock Body Scroll
         setTimeout(() => {
             modal.style.display = 'none';
             currentEcomailId = null;
@@ -300,12 +392,15 @@
                 console.log('Saving note for applicant {{ applicant.id }}:', noteText);
 
                 try {
-                    const formData = new FormData();
-                    formData.append('note', noteText);
-
-                    const response = await fetch('/applicant/{{ applicant.id }}/update_note', {
+                    const response = await fetch('/applicant/{{ applicant.id }}/update_field', {
                         method: 'POST',
-                        body: formData
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({
+                            field: 'note',
+                            value: noteText
+                        })
                     });
 
                     console.log('Response status:', response.status);
@@ -351,7 +446,8 @@
         style="margin-bottom: 1rem; background-color: #fff3cd; color: #856404; padding: 0.75rem 1.25rem; border: 1px solid #ffeeba; border-radius: 0.25rem; display: flex; justify-content: space-between; align-items: center;">
         <span>⚠️ <strong>POZOR:</strong> Email neobsahuje jméno uchazeče - pravděpodobně email rodiče nebo jiné
             osoby.</span>
-        <form action="{{ url_for('dismiss_parent_warning', id=applicant.id) }}" method="POST" style="margin: 0;">
+        <form action="{{ url_for('applicants.dismiss_parent_warning', id=applicant.id) }}" method="POST"
+            style="margin: 0;">
             <button type="submit" class="btn btn-small"
                 style="background: #856404; color: white; padding: 0.25rem 0.75rem; font-size: 0.85rem;">Skrýt</button>
         </form>
@@ -367,7 +463,27 @@
             {% if applicant.duplicate_details.phone_duplicate %}(shodný telefon){% endif %}.
             Pravděpodobně se jedná o opakovanou přihlášku.
         </span>
-        <form action="{{ url_for('dismiss_duplicate_warning', id=applicant.id) }}" method="POST" style="margin: 0;">
+        <form action="{{ url_for('applicants.dismiss_duplicate_warning', id=applicant.id) }}" method="POST"
+            style="margin: 0;">
+            <button type="submit" class="btn btn-small"
+                style="background: #856404; color: white; padding: 0.25rem 0.75rem; font-size: 0.85rem;">Skrýt</button>
+        </form>
+    </div>
+    {% endif %}
+
+    {% if applicant.invalid_email %}
+    <div class="alert alert-danger"
+        style="margin-bottom: 1rem; background-color: #f8d7da; color: #721c24; padding: 0.75rem 1.25rem; border: 1px solid #f5c6cb; border-radius: 0.25rem;">
+        <span>⚠️ <strong>CHYBA:</strong> Neplatný formát emailu.</span>
+    </div>
+    {% endif %}
+
+    {% if applicant.invalid_phone %}
+    <div class="alert alert-warning"
+        style="margin-bottom: 1rem; background-color: #fff3cd; color: #856404; padding: 0.75rem 1.25rem; border: 1px solid #ffeeba; border-radius: 0.25rem; display: flex; justify-content: space-between; align-items: center;">
+        <span>⚠️ <strong>POZOR:</strong> Neplatný formát telefonního čísla.</span>
+        <form action="{{ url_for('applicants.dismiss_phone_warning', id=applicant.id) }}" method="POST"
+            style="margin: 0;">
             <button type="submit" class="btn btn-small"
                 style="background: #856404; color: white; padding: 0.25rem 0.75rem; font-size: 0.85rem;">Skrýt</button>
         </form>
@@ -377,9 +493,9 @@
     <div class="detail-card full-width" style="margin-bottom: 2rem;">
         <h3>Členský průkaz</h3>
         <div style="text-align: center;">
-            <img src="{{ url_for('serve_card_preview', id=applicant.id) }}" alt="Náhled členského průkazu"
+            <img src="{{ url_for('applicants.serve_card_preview', id=applicant.id) }}" alt="Náhled členského průkazu"
                 style="max-width: 500px; width: 100%; height: auto; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); cursor: pointer;"
-                onclick="window.open('{{ url_for('applicant_card', id=applicant.id) }}', '_blank')">
+                onclick="window.open('{{ url_for('applicants.applicant_card', id=applicant.id) }}', '_blank')">
             <p style="margin-top: 0.5rem; font-size: 0.9em; color: #666;">
                 <em>Klikněte na obrázek pro stažení v plné kvalitě</em>
             </p>
@@ -495,8 +611,9 @@
                 <dd>
                     <span id="display_dob">{{ applicant.dob }}</span>
                     <span id="input_dob" style="display: none;">
-                        <input type="date" id="dob_input" value=""
-                            style="padding: 0.25rem 0.5rem; border: 1px solid var(--border-color); border-radius: 0.25rem;">
+                        <input type="text" id="dob_input" value=""
+                            style="padding: 0.25rem 0.5rem; border: 1px solid var(--border-color); border-radius: 0.25rem;"
+                            placeholder="DD.MM.YYYY">
                     </span>
                     <button id="btn_edit_dob" onclick="enableInlineEdit('dob', 'dob')"
                         style="border: none; background: none; cursor: pointer; margin-left: 0.5rem; opacity: 0.6;"
@@ -655,10 +772,10 @@
             <h3>Metadata</h3>
             <dl>
                 <dt>Přihláška přijata:</dt>
-                <dd>{{ applicant.application_received or 'Není k dispozici (CSV import)' }}</dd>
+                <dd>{{ applicant.application_received | datetime_cz or 'Není k dispozici (CSV import)' }}</dd>
 
                 <dt>Datum vytvoření:</dt>
-                <dd>{{ applicant.created_at }}</dd>
+                <dd>{{ applicant.created_at | datetime_cz }}</dd>
 
                 <dt>ID v databázi:</dt>
                 <dd>{{ applicant.id }}</dd>
@@ -678,7 +795,7 @@
             </div>
             <div class="modal-actions">
                 <button class="btn btn-secondary" onclick="closeDeleteModal()">Zrušit</button>
-                <form action="{{ url_for('delete_applicant', id=applicant.id) }}" method="POST"
+                <form action="{{ url_for('applicants.delete_applicant', id=applicant.id) }}" method="POST"
                     style="display: inline;">
                     <button type="submit" class="btn btn-danger">Smazat</button>
                 </form>
@@ -686,9 +803,9 @@
         </div>
     </div>
 
-    {% if audit_logs %}
     <div class="detail-card full-width">
         <h3>Historie aktivit</h3>
+        {% if audit_logs %}
         <div style="overflow-x: auto;">
             <table class="audit-log-table">
                 <thead>
@@ -713,8 +830,10 @@
                 </tbody>
             </table>
         </div>
+        {% else %}
+        <p style="color: #666; font-style: italic;">Zatím žádná aktivita.</p>
+        {% endif %}
     </div>
-    {% endif %}
 
     {% endblock %}
 
@@ -737,16 +856,49 @@
             // Focus input
             const input = inputEl.querySelector('input, select');
 
-            // Special handling for DOB - convert DD.MM.YYYY to YYYY-MM-DD
+            // Initialize Flatpickr for DOB if not already done
             if (elementId === 'dob' && input) {
-                const dobText = displayEl.textContent.trim();
-                if (dobText && dobText.match(/^\d{2}\.\d{2}\.\d{4}$/)) {
-                    const [day, month, year] = dobText.split('.');
-                    input.value = `${year}-${month}-${day}`;
+                // If flatpickr instance doesn't exist on the element
+                if (!input._flatpickr) {
+                    flatpickr(input, {
+                        locale: "cs",
+                        dateFormat: "d.m.Y",
+                        allowInput: true,
+                        defaultDate: displayEl.textContent.trim() || null
+                    });
                 }
+                // Open it
+                setTimeout(() => {
+                    input._flatpickr.open();
+                }, 10);
             }
 
-            if (input) input.focus();
+            if (input) {
+                input.focus();
+
+                // Add Enter key listener to save
+                // Remove old listener to avoid duplicates if re-opening
+                input.removeEventListener('keydown', handleEnterKey);
+                input.addEventListener('keydown', handleEnterKey);
+
+                // Store elementId/fieldName on input for the handler
+                input.dataset.editId = elementId;
+                input.dataset.editField = fieldName;
+            }
+        }
+
+        function handleEnterKey(event) {
+            if (event.key === 'Enter') {
+                event.preventDefault(); // Prevent form submission if inside form
+                const elementId = event.target.dataset.editId;
+                const fieldName = event.target.dataset.editField;
+
+                if (elementId === 'dob') {
+                    saveInlineEditDOB();
+                } else {
+                    saveInlineEdit(elementId, fieldName);
+                }
+            }
         }
 
         function cancelInlineEdit(elementId) {
@@ -810,9 +962,20 @@
                 return;
             }
 
-            // Convert YYYY-MM-DD to DD.MM.YYYY
-            const [year, month, day] = dateValue.split('-');
-            const formattedDate = `${day}.${month}.${year}`;
+            // If using Flatpickr, the value is already likely in desired format or we get it from instance
+            // But our endpoint expects valid date string.
+            // Current display format is DD.MM.YYYY. Flatpickr configured to d.m.Y.
+            // Input value will be "DD.MM.YYYY".
+
+            // We need to send it as DD.MM.YYYY because that's what we want to store (TEXT in DB right now based on display)
+            // Wait, looking at saveInlineEditDOB original code:
+            // It converted YYYY-MM-DD (from date input) to DD.MM.YYYY.
+
+            // With Flatpickr (text input), value is ALREADY "DD.MM.YYYY" (or whatever user typed).
+            // So we just need to ensure it's valid?
+            // Let's trust the input value is what we want to save, maybe simple validation.
+
+            const formattedDate = dateValue; // Already in DD.MM.YYYY if using our flatpickr config
 
             try {
                 const response = await fetch(`/applicant/{{ applicant.id }}/update_field`, {
@@ -965,15 +1128,17 @@
 
     </script>
     <!-- Ecomail Confirmation Modal -->
-    <div id="ecomailModal" class="modal-overlay">
-        <div class="modal">
+    <div id="ecomailModal" class="modal-overlay" style="align-items: flex-start; padding-top: 5vh; overflow-y: auto;">
+        <div class="modal"
+            style="max-width: 800px; width: 95%; margin: 0 auto; max-height: 90vh; display: flex; flex-direction: column;">
             <div class="modal-title">Potvrzení exportu do Ecomailu</div>
-            <div class="modal-body">
-                <p id="ecomailConfirmMsg"></p>
+            <div class="modal-body" style="overflow-y: auto; flex: 1;">
+                <div id="ecomailConfirmMsg"></div>
             </div>
-            <div class="modal-actions">
+            <div class="modal-actions" style="border-top: 1px solid #eee; padding-top: 1rem; margin-top: 1rem;">
                 <button class="btn btn-secondary" onclick="closeEcomailModal()">Zrušit</button>
-                <button class="btn btn-primary" onclick="confirmEcomailExport()">Potvrdit</button>
+                <button class="btn btn-primary" id="ecomailConfirmBtn"
+                    onclick="confirmEcomailExport()">Potvrdit</button>
             </div>
         </div>
     </div>

@@ -128,7 +128,8 @@ def send_email_with_card(applicant_data, subject, body, card_image_bytes, email_
         
         # Create message
         msg = MIMEMultipart()
-        msg['From'] = "info@mladydivak.cz"
+        # Use simple string for From to avoid issues, preferably matching the account
+        msg['From'] = email_user 
         msg['Reply-To'] = "info@mladydivak.cz"
         msg['To'] = recipient
         msg['Subject'] = rendered_subject
@@ -160,6 +161,8 @@ def send_email_with_card(applicant_data, subject, body, card_image_bytes, email_
         with smtplib.SMTP_SSL('smtp.gmail.com', 465) as server:
             server.login(email_user, email_pass)
             server.send_message(msg)
+            
+        print(f"DEBUG: Email sent via SMTP to {recipient} from {email_user}")
         
         return {
             'success': True,
@@ -190,7 +193,7 @@ def send_welcome_email(applicant_data, card_image_bytes, email_user, email_pass,
         Dict with success status and message
     """
     # Load the welcome email template
-    html_template = load_welcome_email_template()
+    html_template, _ = load_welcome_email_template()
     
     if html_template is None:
         return {

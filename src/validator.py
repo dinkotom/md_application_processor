@@ -1,8 +1,25 @@
 import sqlite3
 import os
-import os
+import re
 
 DB_PATH = "applications.db"
+
+def is_valid_email(email):
+    """Simple regex validation for email."""
+    if not email:
+        return False
+    pattern = r'(^[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+$)'
+    return re.match(pattern, email) is not None
+
+def is_valid_phone(phone):
+    """
+    Checks if phone number contains at least 9 digits.
+    """
+    if not phone:
+        return False
+    # Count digits
+    digits = len(re.sub(r'\D', '', phone))
+    return digits >= 9
 
 def init_db(db_path: str = DB_PATH):
     conn = sqlite3.connect(db_path)

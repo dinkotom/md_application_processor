@@ -7,7 +7,8 @@ from io import BytesIO
 # Add project root to path
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from web_app import app, get_db_connection
+from web_app import app
+from src.database import get_db_connection
 
 class TestWebApp(unittest.TestCase):
     
@@ -19,6 +20,8 @@ class TestWebApp(unittest.TestCase):
         
         # Setup temporary test database
         self.db_path = 'test_temp.db'
+        if os.path.exists(self.db_path):
+            os.remove(self.db_path)
         
         # Initialize database schema
         conn = sqlite3.connect(self.db_path)
@@ -40,6 +43,7 @@ class TestWebApp(unittest.TestCase):
                 source TEXT,
                 source_detail TEXT,
                 message TEXT,
+                note TEXT,
                 color TEXT,
                 newsletter TEXT,
                 full_body TEXT,
@@ -76,29 +80,25 @@ class TestWebApp(unittest.TestCase):
         conn.commit()
         conn.close()
         
-        # Patch get_db_path/connection to use our temp DB
-        # Since we can't easily patch the global function in the imported module without mocking,
-        # we will rely on the fact that we can override the DB path if we modify the function or 
-        # use a context manager. 
-        # However, web_app.py imports sqlite3 and uses a global DB_PATH_TEST.
-        # Let's try to patch the get_db_path function in web_app module.
-        
-        import web_app
-        self.original_get_db_path = web_app.get_db_path
-        web_app.get_db_path = lambda: self.db_path
+        # Patch get_db_path using unittest.mock
+        from unittest.mock import patch
+        self.db_patcher = patch('src.database.get_db_path', return_value=self.db_path)
+        self.db_patcher.start()
         
         # Simulate logged-in user
         with self.client.session_transaction() as sess:
             sess['user'] = {'email': 'test@example.com', 'name': 'Test User'}
 
     def tearDown(self):
-        # Restore original function
-        import web_app
-        web_app.get_db_path = self.original_get_db_path
+        # Stop patcher
+        self.db_patcher.stop()
         
         # Remove temp database
         if os.path.exists(self.db_path):
-            os.remove(self.db_path)
+            try:
+                os.remove(self.db_path)
+            except OSError:
+                pass
 
     def test_index_page(self):
         """Test that the index page loads and shows the applicant"""
@@ -124,7 +124,7 @@ class TestWebApp(unittest.TestCase):
 
     def test_update_status(self):
         """Test updating applicant status"""
-        response = self.client.post('/applicant/1/update_status', data={
+        response = self.client.post('/applicant/1/status', data={
             'status': 'Vyřízená'
         }, follow_redirects=True)
         
@@ -267,6 +267,29 @@ class TestWebApp(unittest.TestCase):
         dob = conn.execute('SELECT dob FROM applicants WHERE id = 1').fetchone()[0]
         conn.close()
         self.assertEqual(dob, '15.03.2005')
+
+    def test_update_applicant_note(self):
+        """Test updating note field"""
+        import json
+        
+        response = self.client.post('/applicant/1/update_field',
+            data=json.dumps({
+                'field': 'note',
+                'value': 'This is a test note'
+            }),
+            content_type='application/json'
+        )
+        
+        self.assertEqual(response.status_code, 200)
+        data = json.loads(response.data)
+        self.assertTrue(data['success'])
+        
+        # Verify change in DB
+        conn = sqlite3.connect(self.db_path)
+        # Check if column exists first (it might not in test schema setup if not updated)
+        note = conn.execute('SELECT note FROM applicants WHERE id = 1').fetchone()[0]
+        conn.close()
+        self.assertEqual(note, 'This is a test note')
 
     def test_filter_by_gender(self):
         """Test filtering applicants by guessed gender"""
