@@ -145,7 +145,7 @@
 
 <script>
     function testConnection() {
-        alert('Testing connection to Ecomail API...');
+        Swal.fire('Info', 'Testing connection to Ecomail API...', 'info');
         // TODO: Implement API test endpoint
     }
 
@@ -154,7 +154,7 @@
     }
 
     function viewListDetails(listId) {
-        alert('Viewing details for list ID: ' + listId);
+        Swal.fire('Info', 'Viewing details for list ID: ' + listId, 'info');
         // TODO: Implement list details view
     }
 
@@ -185,7 +185,7 @@
         const replyTo = document.getElementById('new_list_reply_to').value;
 
         if (!name || !fromName || !fromEmail || !replyTo) {
-            alert('Please fill in all required fields');
+            Swal.fire('Info', 'Please fill in all required fields', 'warning');
             return;
         }
 
@@ -207,11 +207,11 @@
                 closeCreateListModal();
                 window.location.reload();
             } else {
-                alert('Error creating list: ' + (result.error || 'Unknown error'));
+                Swal.fire('Error', 'Error creating list: ' + (result.error || 'Unknown error'), 'error');
             }
         } catch (error) {
             console.error('Error:', error);
-            alert('Error creating list');
+            Swal.fire('Error', 'Error creating list', 'error');
         }
     }
 
@@ -220,7 +220,7 @@
         const resultContainer = document.getElementById('lookup_result');
 
         if (!email) {
-            alert('Please enter an email address');
+            Swal.fire('Info', 'Please enter an email address', 'warning');
             return;
         }
 

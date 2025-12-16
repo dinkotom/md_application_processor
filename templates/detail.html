@@ -144,7 +144,7 @@
             btn.innerHTML = originalText;
 
             if (!result.success) {
-                alert('Chyba při kontrole: ' + (result.error || 'Neznámá chyba'));
+                Swal.fire('Chyba', 'Chyba při kontrole: ' + (result.error || 'Neznámá chyba'), 'error');
                 return;
             }
 
@@ -232,7 +232,7 @@
             console.error(error);
             btn.disabled = false;
             btn.innerHTML = originalText;
-            alert('Chyba při komunikaci se serverem.');
+            Swal.fire('Chyba', 'Chyba při komunikaci se serverem.', 'error');
         }
     }
 
@@ -289,13 +289,13 @@
             } else {
                 btn.disabled = false;
                 btn.innerHTML = originalText;
-                alert('Chyba při exportu: ' + (result.error || 'Neznámá chyba'));
+                Swal.fire('Chyba', 'Chyba při exportu: ' + (result.error || 'Neznámá chyba'), 'error');
             }
         } catch (error) {
             console.error('Error:', error);
             btn.disabled = false;
             btn.innerHTML = originalText;
-            alert('Chyba při komunikaci se serverem.');
+            Swal.fire('Chyba', 'Chyba při komunikaci se serverem.', 'error');
         }
     }
 
@@ -357,13 +357,13 @@
             } else {
                 btn.disabled = false;
                 btn.innerHTML = originalText;
-                alert('Chyba při odesílání: ' + (result.error || 'Neznámá chyba'));
+                Swal.fire('Chyba', 'Chyba při odesílání: ' + (result.error || 'Neznámá chyba'), 'error');
             }
         } catch (error) {
             console.error('Error:', error);
             btn.disabled = false;
             btn.innerHTML = originalText;
-            alert('Chyba při komunikaci se serverem.');
+            Swal.fire('Chyba', 'Chyba při komunikaci se serverem.', 'error');
         }
     }
 
@@ -944,11 +944,11 @@
                     // Reload to show updated data (and re-calculate things like age/status styles)
                     window.location.reload();
                 } else {
-                    alert(`Error: ${result.error}`);
+                    Swal.fire('Chyba', 'Chyba: ' + result.error, 'error');
                 }
             } catch (error) {
                 console.error('Error updating field:', error);
-                alert('Error updating field');
+                Swal.fire('Chyba', 'Chyba při aktualizaci pole', 'error');
             }
         }
 
@@ -958,7 +958,7 @@
             const dateValue = input.value; // YYYY-MM-DD format
 
             if (!dateValue) {
-                alert('Prosím vyberte datum');
+                Swal.fire('Info', 'Prosím vyberte datum', 'warning');
                 return;
             }
 
@@ -994,11 +994,11 @@
                 if (result.success) {
                     window.location.reload();
                 } else {
-                    alert(`Error: ${result.error}`);
+                    Swal.fire('Chyba', 'Chyba: ' + result.error, 'error');
                 }
             } catch (error) {
                 console.error('Error updating field:', error);
-                alert('Error updating field');
+                Swal.fire('Chyba', 'Chyba při aktualizaci pole', 'error');
             }
         }
 
@@ -1107,13 +1107,13 @@
                 } else {
                     btn.disabled = false;
                     btn.innerHTML = originalText;
-                    alert('Chyba při odesílání: ' + (result.error || 'Neznámá chyba'));
+                    Swal.fire('Chyba', 'Chyba při odesílání: ' + (result.error || 'Neznámá chyba'), 'error');
                 }
             } catch (error) {
                 console.error('Error:', error);
                 btn.disabled = false;
                 btn.innerHTML = originalText;
-                alert('Chyba při komunikaci se serverem.');
+                Swal.fire('Chyba', 'Chyba při komunikaci se serverem.', 'error');
             }
         }
 

@@ -381,7 +381,7 @@
 
             if (!response.ok) {
                 const error = await response.json();
-                alert('Chyba při stahování emailů: ' + (error.error || 'Neznámá chyba'));
+                Swal.fire('Chyba', 'Chyba při stahování emailů: ' + (error.error || 'Neznámá chyba'), 'error');
                 return;
             }
 
@@ -402,7 +402,7 @@
             modal.classList.add('active');
         } catch (error) {
             console.error('Error fetching emails:', error);
-            alert('Chyba při stahování emailů.');
+            Swal.fire('Chyba', 'Chyba při stahování emailů.', 'error');
         } finally {
             // Restore original state
             btn.disabled = false;
@@ -444,12 +444,12 @@
         }).then(response => response.json())
             .then(data => {
                 if (data.errors && data.errors.length > 0) {
-                    alert('Import dokončen s chybami:\n' + data.errors.join('\n'));
+                    Swal.fire('Info', 'Import dokončen s chybami:\n' + data.errors.join('\n'), 'warning');
                 }
                 window.location.reload();
             }).catch(error => {
                 console.error('Error confirming import:', error);
-                alert('Chyba při importu: ' + error);
+                Swal.fire('Chyba', 'Chyba při importu: ' + error, 'error');
                 // Re-enable buttons on error
                 if (confirmBtn) {
                     confirmBtn.disabled = false;
@@ -534,11 +534,11 @@
                 closeNoteModal();
                 window.location.reload();
             } else {
-                alert(`Chyba: ${result.error}`);
+                Swal.fire('Chyba', `Chyba: ${result.error}`, 'error');
             }
         } catch (error) {
             console.error('Error saving note:', error);
-            alert('Chyba při ukládání poznámky');
+            Swal.fire('Chyba', 'Chyba při ukládání poznámky', 'error');
         }
     }
 

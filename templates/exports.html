@@ -300,12 +300,12 @@
         const fields = getSelectedFields();
 
         if (!name) {
-            alert('Zadejte název šablony.');
+            Swal.fire('Info', 'Zadejte název šablony.', 'info');
             return;
         }
 
         if (fields.length === 0) {
-            alert('Vyberte alespoň jedno pole.');
+            Swal.fire('Info', 'Vyberte alespoň jedno pole.', 'info');
             return;
         }
 
@@ -321,10 +321,10 @@
                 nameInput.value = '';
                 loadPresets();
             } else {
-                alert('Chyba při ukládání: ' + result.error);
+                Swal.fire('Chyba', 'Chyba při ukládání: ' + result.error, 'error');
             }
         } catch (err) {
-            alert('Chyba komunikace se serverem.');
+            Swal.fire('Chyba', 'Chyba komunikace se serverem.', 'error');
         }
     }
 
@@ -371,15 +371,27 @@
     }
 
     async function deletePreset(id) {
-        if (!confirm('Opravdu smazat tuto šablonu?')) return;
+        const result = await Swal.fire({
+            title: 'Opravdu smazat?',
+            text: "Tuto akci nelze vzít zpět.",
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: '#d33',
+            cancelButtonColor: '#3085d6',
+            confirmButtonText: 'Ano, smazat',
+            cancelButtonText: 'Zrušit'
+        });
 
-        try {
-            const response = await fetch(`/export/presets/${id}`, { method: 'DELETE' });
-            if (response.ok) {
-                loadPresets();
+        if (result.isConfirmed) {
+            try {
+                const response = await fetch(`/export/presets/${id}`, { method: 'DELETE' });
+                if (response.ok) {
+                    loadPresets();
+                    Swal.fire('Smazáno!', 'Šablona byla vymazána.', 'success');
+                }
+            } catch (err) {
+                Swal.fire('Chyba', 'Chyba při mazání.', 'error');
             }
-        } catch (err) {
-            alert('Chyba při mazání.');
         }
     }
 

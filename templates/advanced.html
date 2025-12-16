@@ -325,7 +325,7 @@
             modal.classList.add('active');
         } catch (error) {
             console.error('Error uploading CSV:', error);
-            alert('Chyba při nahrávání CSV souboru.');
+            Swal.fire('Chyba', 'Chyba při nahrávání CSV souboru.', 'error');
         }
 
         // Reset file input
@@ -364,7 +364,7 @@
             }
         }).catch(error => {
             console.error('Error confirming import:', error);
-            alert('Chyba při importu: ' + error.message);
+            Swal.fire('Chyba', 'Chyba při importu: ' + error.message, 'error');
             // Re-enable buttons on error
             if (confirmBtn) {
                 confirmBtn.disabled = false;
@@ -421,7 +421,7 @@
         const replyTo = document.getElementById('new_list_reply_to').value;
 
         if (!name || !fromName || !fromEmail || !replyTo) {
-            alert('Prosím vyplňte všechna povinná pole');
+            Swal.fire('Info', 'Prosím vyplňte všechna povinná pole', 'warning');
             return;
         }
 
@@ -443,11 +443,11 @@
                 closeCreateListModal();
                 window.location.reload();
             } else {
-                alert('Chyba při vytváření seznamu: ' + (result.error || 'Neznámá chyba'));
+                Swal.fire('Chyba', 'Chyba při vytváření seznamu: ' + (result.error || 'Neznámá chyba'), 'error');
             }
         } catch (error) {
             console.error('Error:', error);
-            alert('Chyba při vytváření seznamu');
+            Swal.fire('Chyba', 'Chyba při vytváření seznamu', 'error');
         }
     }
 
@@ -456,7 +456,7 @@
         const resultContainer = document.getElementById('lookup_result');
 
         if (!email) {
-            alert('Prosím zadejte emailovou adresu');
+            Swal.fire('Info', 'Prosím zadejte emailovou adresu', 'warning');
             return;
         }
 
