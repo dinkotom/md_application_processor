@@ -1,9 +1,8 @@
-qrcode
-
-Pillow
-Flask
-python-dotenv
-requests
-markdown
-Authlib
-openpyxl
+qrcode==8.2
+Pillow==12.0.0
+Flask==3.1.2
+python-dotenv==1.2.1
+requests==2.32.5
+Markdown==3.10
+Authlib==1.6.5
+openpyxl==3.1.5

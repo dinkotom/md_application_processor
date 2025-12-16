@@ -41,12 +41,12 @@ def generate_qr_code_bytes(data: Dict[str, str]):
     
     # Construct payload
     payload = (
-        f"Jméno: {data.get('first_name', '')}\n"
-        f"Příjmení: {data.get('last_name', '')}\n"
-        f"Číslo karty: {data.get('membership_id', '')}\n"
-        f"Datum narození: {data.get('dob', '')}\n"
-        f"Email: {data.get('email', '')}\n"
-        f"Telefon: {data.get('phone', '')}"
+        f"Jméno: {data.get('first_name') or ''}\n"
+        f"Příjmení: {data.get('last_name') or ''}\n"
+        f"Číslo karty: {data.get('membership_id') or ''}\n"
+        f"Datum narození: {data.get('dob') or ''}\n"
+        f"Email: {data.get('email') or ''}\n"
+        f"Telefon: {data.get('phone') or ''}"
     )
     
     qr = qrcode.QRCode(
@@ -152,7 +152,8 @@ def generate_membership_card(data: Dict[str, str]):
             font_name = ImageFont.load_default()
     
     # 3. Draw membership number (to the right of QR code, top aligned)
-    membership_id = data.get('membership_id', '0000')
+    membership_id = data.get('membership_id') or '0000'
+    membership_id = str(membership_id) # Ensure string
     # Position to the right of QR code
     number_x = qr_x + qr_size + 30  # 30px gap from QR code
     number_y = qr_y + 45  # Moved another 10px lower
@@ -160,7 +161,10 @@ def generate_membership_card(data: Dict[str, str]):
     draw.text((number_x, number_y), membership_id, font=font_number, fill="white")
     
     # 4. Draw full name (below membership number, same x position)
-    full_name = f"{data.get('first_name', '')} {data.get('last_name', '')}"
+    first_name = data.get('first_name') or ''
+    last_name = data.get('last_name') or ''
+    full_name = f"{first_name} {last_name}".strip()
+    
     name_x = number_x
     name_y = number_y + 90  # Below the number
     
@@ -193,3 +197,6 @@ if __name__ == "__main__":
     # Cleanup
     if os.path.exists(qr_path):
         os.remove(qr_path)
+
+# Alias for compatibility
+generate_card = generate_membership_card

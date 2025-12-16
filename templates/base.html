@@ -9,16 +9,27 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Mono:wght@100..900&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}?v=3">
-    <link rel="icon" type="image/png" href="{{ url_for('static', filename='favicon.png') }}?v=3">
-    <link rel="shortcut icon" href="{{ url_for('static', filename='favicon.ico') }}?v=3">
-    <link rel="apple-touch-icon" href="{{ url_for('static', filename='favicon.png') }}?v=3">
+    <link rel="icon" type="image/png" href="{{ url_for('static', filename='favicon.png') }}?v=4">
+    <link rel="shortcut icon" href="{{ url_for('favicon') }}?v=4">
+    <link rel="icon" type="image/png" href="{{ url_for('static', filename='favicon.png') }}?v=4">
+    <link rel="shortcut icon" href="{{ url_for('favicon') }}?v=4">
+    <link rel="apple-touch-icon" href="{{ url_for('static', filename='favicon.png') }}?v=4">
+    <!-- Flatpickr for better date picking -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
+    <!-- SweetAlert2 -->
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <style>
+        .swal2-popup {
+            font-family: 'Noto Sans Mono', monospace !important;
+        }
+    </style>
 </head>
 
 <body>
     <nav class="navbar">
         <div class="container">
             <div class="nav-left">
-                <a href="{{ url_for('index') }}"
+                <a href="{{ url_for('applicants.index') }}"
                     style="text-decoration: none; color: inherit; display: flex; align-items: center; gap: 10px;">
                     <h1 class="logo" style="margin: 0; color: var(--accent-color); font-size: 2.5rem; line-height: 1;">
                         md
@@ -30,20 +41,20 @@
                     endif %}
                 </a>
                 <div class="nav-links">
-                    <a href="{{ url_for('index') }}"
-                        class="{% if request.endpoint == 'index' %}active{% endif %}">Přihlášky</a>
-                    <a href="{{ url_for('stats') }}"
-                        class="{% if request.endpoint == 'stats' %}active{% endif %}">Statistiky</a>
-                    <a href="{{ url_for('exports') }}"
-                        class="{% if request.endpoint == 'exports' %}active{% endif %}">Exporty</a>
-                    <a href="{{ url_for('advanced') }}"
-                        class="{% if request.endpoint == 'advanced' %}active{% endif %}">Pokročilé</a>
+                    <a href="{{ url_for('applicants.index') }}"
+                        class="{% if request.endpoint == 'applicants.index' %}active{% endif %}">Přihlášky</a>
+                    <a href="{{ url_for('settings.stats') }}"
+                        class="{% if request.endpoint == 'settings.stats' %}active{% endif %}">Statistiky</a>
+                    <a href="{{ url_for('applicants.exports') }}"
+                        class="{% if request.endpoint == 'applicants.exports' %}active{% endif %}">Exporty</a>
+                    <a href="{{ url_for('settings.advanced') }}"
+                        class="{% if request.endpoint == 'settings.advanced' %}active{% endif %}">Pokročilé</a>
                 </div>
             </div>
 
             <div class="nav-right">
                 {% if session.user %}
-                <a href="{{ url_for('logout') }}" class="logout-btn">Odhlásit</a>
+                <a href="{{ url_for('auth.logout') }}" class="logout-btn">Odhlásit</a>
                 <span class="user-email">
                     {{ session.user.email }}
                 </span>
@@ -63,6 +74,9 @@
     </footer>
 
     {% block scripts %}{% endblock %}
+    <!-- Flatpickr JS -->
+    <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+    <script src="https://npmcdn.com/flatpickr/dist/l10n/cs.js"></script>
 </body>
 
 </html>

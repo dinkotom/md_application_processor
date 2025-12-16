@@ -17,7 +17,7 @@
 
 
 <div class="filters-container">
-    <form action="{{ url_for('index') }}" method="GET" class="search-form">
+    <form action="{{ url_for('applicants.index') }}" method="GET" class="search-form">
         <input type="text" name="search" class="search-input" placeholder="Hledat jméno, email, město..."
             value="{{ search }}">
         <button type="submit" class="btn btn-primary">Hledat</button>
@@ -27,20 +27,20 @@
     <div style="display: flex; justify-content: space-between; align-items: center; gap: 1rem; margin-bottom: 1rem;">
         <!-- Status Filter Buttons (Left) -->
         <div class="status-filter-buttons">
-            <a href="{{ url_for('index', status='Nová', search=search, age_group=filter_age_group, city=filter_city, school=filter_school, interest=filter_interest, source=filter_source, alerts=filter_alerts) }}"
+            <a href="{{ url_for('applicants.index', status='Nová', search=search, age_group=filter_age_group, city=filter_city, school=filter_school, interest=filter_interest, source=filter_source, alerts=filter_alerts) }}"
                 class="status-filter-btn status-nova {% if filter_status == 'Nová' %}active{% endif %}">
                 Nová
             </a>
-            <a href="{{ url_for('index', status='Zpracovává se', search=search, age_group=filter_age_group, city=filter_city, school=filter_school, interest=filter_interest, source=filter_source, alerts=filter_alerts) }}"
+            <a href="{{ url_for('applicants.index', status='Zpracovává se', search=search, age_group=filter_age_group, city=filter_city, school=filter_school, interest=filter_interest, source=filter_source, alerts=filter_alerts) }}"
                 class="status-filter-btn status-zpracovava-se {% if filter_status == 'Zpracovává se' %}active{% endif %}">
                 Zpracovává se
             </a>
-            <a href="{{ url_for('index', status='Vyřízená', search=search, age_group=filter_age_group, city=filter_city, school=filter_school, interest=filter_interest, source=filter_source, alerts=filter_alerts) }}"
+            <a href="{{ url_for('applicants.index', status='Vyřízená', search=search, age_group=filter_age_group, city=filter_city, school=filter_school, interest=filter_interest, source=filter_source, alerts=filter_alerts) }}"
                 class="status-filter-btn status-vyrizena {% if filter_status == 'Vyřízená' %}active{% endif %}">
                 Vyřízená
             </a>
             {% if filter_status %}
-            <a href="{{ url_for('index', search=search, age_group=filter_age_group, city=filter_city, school=filter_school, interest=filter_interest, source=filter_source, alerts=filter_alerts) }}"
+            <a href="{{ url_for('applicants.index', search=search, age_group=filter_age_group, city=filter_city, school=filter_school, interest=filter_interest, source=filter_source, alerts=filter_alerts) }}"
                 class="status-filter-btn" style="margin-left: 0.5rem;">
                 ✕ Zrušit
             </a>
@@ -49,13 +49,13 @@
 
         <!-- Alert Filter Button (Right) -->
         <div>
-            <a href="{{ url_for('index', alerts='true', search=search, status=filter_status, age_group=filter_age_group, city=filter_city, school=filter_school, interest=filter_interest, source=filter_source) }}"
+            <a href="{{ url_for('applicants.index', alerts='true', search=search, status=filter_status, age_group=filter_age_group, city=filter_city, school=filter_school, interest=filter_interest, source=filter_source) }}"
                 class="status-filter-btn {% if filter_alerts == 'true' %}active{% endif %}"
                 style="background: #ff9800; border-color: #ff9800;">
                 ⚠️ Pouze s upozorněními
             </a>
             {% if filter_alerts == 'true' %}
-            <a href="{{ url_for('index', search=search, status=filter_status, age_group=filter_age_group, city=filter_city, school=filter_school, interest=filter_interest, source=filter_source) }}"
+            <a href="{{ url_for('applicants.index', search=search, status=filter_status, age_group=filter_age_group, city=filter_city, school=filter_school, interest=filter_interest, source=filter_source) }}"
                 class="status-filter-btn" style="margin-left: 0.5rem;">
                 ✕ Zrušit
             </a>
@@ -68,30 +68,30 @@
         <span class="filter-label">Aktivní filtry:</span>
         {% if filter_age_group %}
         <span class="filter-tag">Věk: {{ filter_age_group }} <a
-                href="{{ url_for('index', search=search, status=filter_status, city=filter_city, school=filter_school, interest=filter_interest, source=filter_source) }}"
+                href="{{ url_for('applicants.index', search=search, status=filter_status, city=filter_city, school=filter_school, interest=filter_interest, source=filter_source) }}"
                 class="remove-filter">&times;</a></span>
         {% endif %}
         {% if filter_city %}
         <span class="filter-tag">Město: {{ filter_city }} <a
-                href="{{ url_for('index', search=search, status=filter_status, age_group=filter_age_group, school=filter_school, interest=filter_interest, source=filter_source) }}"
+                href="{{ url_for('applicants.index', search=search, status=filter_status, age_group=filter_age_group, school=filter_school, interest=filter_interest, source=filter_source) }}"
                 class="remove-filter">&times;</a></span>
         {% endif %}
         {% if filter_school %}
         <span class="filter-tag">Škola: {{ filter_school }} <a
-                href="{{ url_for('index', search=search, status=filter_status, age_group=filter_age_group, city=filter_city, interest=filter_interest, source=filter_source) }}"
+                href="{{ url_for('applicants.index', search=search, status=filter_status, age_group=filter_age_group, city=filter_city, interest=filter_interest, source=filter_source) }}"
                 class="remove-filter">&times;</a></span>
         {% endif %}
         {% if filter_interest %}
         <span class="filter-tag">Zájem: {{ filter_interest }} <a
-                href="{{ url_for('index', search=search, status=filter_status, age_group=filter_age_group, city=filter_city, school=filter_school, source=filter_source) }}"
+                href="{{ url_for('applicants.index', search=search, status=filter_status, age_group=filter_age_group, city=filter_city, school=filter_school, source=filter_source) }}"
                 class="remove-filter">&times;</a></span>
         {% endif %}
         {% if filter_source %}
         <span class="filter-tag">Zdroj: {{ filter_source }} <a
-                href="{{ url_for('index', search=search, status=filter_status, age_group=filter_age_group, city=filter_city, school=filter_school, interest=filter_interest) }}"
+                href="{{ url_for('applicants.index', search=search, status=filter_status, age_group=filter_age_group, city=filter_city, school=filter_school, interest=filter_interest) }}"
                 class="remove-filter">&times;</a></span>
         {% endif %}
-        <a href="{{ url_for('index') }}" class="clear-all-filters">Zrušit vše</a>
+        <a href="{{ url_for('applicants.index') }}" class="clear-all-filters">Zrušit vše</a>
     </div>
     {% endif %}
 </div>
@@ -101,7 +101,7 @@
         <thead>
             <tr>
                 <th>
-                    <a href="{{ url_for('index', sort='id', order='asc' if (request.args.get('sort') == 'id' and request.args.get('order') == 'desc') else 'desc', search=search, status=filter_status, age_group=filter_age_group, city=filter_city, school=filter_school, interest=filter_interest, source=filter_source) }}"
+                    <a href="{{ url_for('applicants.index', sort='id', order='asc' if (request.args.get('sort') == 'id' and request.args.get('order') == 'desc') else 'desc', search=search, status=filter_status, age_group=filter_age_group, city=filter_city, school=filter_school, interest=filter_interest, source=filter_source) }}"
                         style="color: inherit; text-decoration: none; white-space: nowrap;">
                         ID {% if request.args.get('sort') == 'id' %}{{ '▲' if request.args.get('order') == 'asc' else
                         '▼' }}{% else %}↕{% endif %}
@@ -113,7 +113,7 @@
                 <th>Věk</th>
                 <th>Město</th>
                 <th>
-                    <a href="{{ url_for('index', sort='application_received', order='asc' if (request.args.get('sort') == 'application_received' and request.args.get('order') == 'desc') else 'desc', search=search, status=filter_status, age_group=filter_age_group, city=filter_city, school=filter_school, interest=filter_interest, source=filter_source) }}"
+                    <a href="{{ url_for('applicants.index', sort='application_received', order='asc' if (request.args.get('sort') == 'application_received' and request.args.get('order') == 'desc') else 'desc', search=search, status=filter_status, age_group=filter_age_group, city=filter_city, school=filter_school, interest=filter_interest, source=filter_source) }}"
                         style="color: inherit; text-decoration: none; white-space: nowrap;">
                         Přihláška {% if request.args.get('sort') == 'application_received' %}{{ '▲' if
                         request.args.get('order') == 'asc' else '▼' }}{% else %}↕{% endif %}
@@ -128,7 +128,7 @@
             {% for app in applicants %}
             <tr class="{% if app.age is none or (app.age and (app.age < 15 or app.age >= 25)) or app.suspect_parent_email or app.is_duplicate %}warning-row{% endif %}"
                 style="cursor: pointer;"
-                onclick="window.location='{{ url_for('applicant_detail', id=app.id, **request.args) }}'">
+                onclick="window.location='{{ url_for('applicants.detail', id=app.id, **request.args) }}'">
                 <td><span class="badge">{{ app.membership_id }}</span></td>
                 <td><strong>{{ app.first_name }} {{ app.last_name }}</strong></td>
                 <td onclick="event.stopPropagation()"><a href="mailto:{{ app.email }}">{{ app.email }}</a></td>
@@ -149,7 +149,8 @@
                     {% endif %}
                 </td>
                 <td onclick="event.stopPropagation()">
-                    <form action="{{ url_for('update_applicant_status', id=app.id) }}" method="POST" style="margin: 0;">
+                    <form action="{{ url_for('applicants.update_applicant_status', id=app.id) }}" method="POST"
+                        style="margin: 0;">
                         <select name="status" onchange="this.form.submit()"
                             class="status-select status-{{ app.status | slugify_status }}"
                             style="border: none; padding: 5px 10px; border-radius: 12px; font-size: 0.85em; font-weight: 500; cursor: pointer; appearance: none; -webkit-appearance: none; text-align: center;">
@@ -162,8 +163,7 @@
                     </form>
                 </td>
                 <td onclick="event.stopPropagation()" style="text-align: center;">
-                    <button
-                        onclick="openNoteModal({{ app.id }}, '{{ app.note | replace("'", "\\'") if app.note else '' }}')"
+                    <button onclick='openNoteModal({{ app.id }}, {{ app.note | tojson if app.note else "null" }})'
                         style="border: none; background: none; cursor: pointer; padding: 0.25rem;"
                         title="{% if app.note %}Zobrazit/upravit poznámku{% else %}Přidat poznámku{% endif %}">
                         <svg width="16" height="16" viewBox="0 0 24 24"
@@ -177,7 +177,7 @@
                     </button>
                 </td>
                 <td onclick="event.stopPropagation()">
-                    <a href="{{ url_for('applicant_detail', id=app.id, **request.args) }}"
+                    <a href="{{ url_for('applicants.detail', id=app.id, **request.args) }}"
                         class="btn btn-small btn-secondary">Detail</a>
                 </td>
             </tr>
@@ -195,11 +195,11 @@
 <div class="pagination">
     <!-- First Page -->
     {% if page > 1 %}
-    <a href="{{ url_for('index', page=1, search=search, status=filter_status, age_group=filter_age_group, city=filter_city, school=filter_school, interest=filter_interest, source=filter_source, alerts=filter_alerts, character=filter_character) }}"
+    <a href="{{ url_for('applicants.index', page=1, search=search, status=filter_status, age_group=filter_age_group, city=filter_city, school=filter_school, interest=filter_interest, source=filter_source, alerts=filter_alerts, character=filter_character) }}"
         class="btn btn-secondary" title="První stránka">
         &laquo;&laquo;
     </a>
-    <a href="{{ url_for('index', page=page-1, search=search, status=filter_status, age_group=filter_age_group, city=filter_city, school=filter_school, interest=filter_interest, source=filter_source, alerts=filter_alerts, character=filter_character) }}"
+    <a href="{{ url_for('applicants.index', page=page-1, search=search, status=filter_status, age_group=filter_age_group, city=filter_city, school=filter_school, interest=filter_interest, source=filter_source, alerts=filter_alerts, character=filter_character) }}"
         class="btn btn-secondary" title="Předchozí stránka">
         &laquo;
     </a>
@@ -214,7 +214,7 @@
         {% if p == page %}
         <span class="page-number active">{{ p }}</span>
         {% elif p == 1 or p == total_pages or (p >= page - 2 and p <= page + 2) %} <a
-            href="{{ url_for('index', page=p, search=search, status=filter_status, age_group=filter_age_group, city=filter_city, school=filter_school, interest=filter_interest, source=filter_source, alerts=filter_alerts, character=filter_character) }}"
+            href="{{ url_for('applicants.index', page=p, search=search, status=filter_status, age_group=filter_age_group, city=filter_city, school=filter_school, interest=filter_interest, source=filter_source, alerts=filter_alerts, character=filter_character) }}"
             class="page-number">{{ p }}</a>
             {% elif p == page - 3 or p == page + 3 %}
             <span class="page-ellipsis">...</span>
@@ -224,11 +224,11 @@
 
     <!-- Next/Last Page -->
     {% if page < total_pages %} <a
-        href="{{ url_for('index', page=page+1, search=search, status=filter_status, age_group=filter_age_group, city=filter_city, school=filter_school, interest=filter_interest, source=filter_source, alerts=filter_alerts, character=filter_character) }}"
+        href="{{ url_for('applicants.index', page=page+1, search=search, status=filter_status, age_group=filter_age_group, city=filter_city, school=filter_school, interest=filter_interest, source=filter_source, alerts=filter_alerts, character=filter_character) }}"
         class="btn btn-secondary" title="Další stránka">
         &raquo;
         </a>
-        <a href="{{ url_for('index', page=total_pages, search=search, status=filter_status, age_group=filter_age_group, city=filter_city, school=filter_school, interest=filter_interest, source=filter_source, alerts=filter_alerts, character=filter_character) }}"
+        <a href="{{ url_for('applicants.index', page=total_pages, search=search, status=filter_status, age_group=filter_age_group, city=filter_city, school=filter_school, interest=filter_interest, source=filter_source, alerts=filter_alerts, character=filter_character) }}"
             class="btn btn-secondary" title="Poslední stránka">
             &raquo;&raquo;
         </a>
@@ -375,13 +375,13 @@
         btn.innerHTML = '<span style="margin-right: 0.5rem;">⏳</span> Stahování...';
 
         try {
-            const response = await fetch('{{ url_for("fetch_preview") }}', {
+            const response = await fetch('{{ url_for("applicants.fetch_preview") }}', {
                 method: 'POST'
             });
 
             if (!response.ok) {
                 const error = await response.json();
-                alert('Chyba při stahování emailů: ' + (error.error || 'Neznámá chyba'));
+                Swal.fire('Chyba', 'Chyba při stahování emailů: ' + (error.error || 'Neznámá chyba'), 'error');
                 return;
             }
 
@@ -402,7 +402,7 @@
             modal.classList.add('active');
         } catch (error) {
             console.error('Error fetching emails:', error);
-            alert('Chyba při stahování emailů.');
+            Swal.fire('Chyba', 'Chyba při stahování emailů.', 'error');
         } finally {
             // Restore original state
             btn.disabled = false;
@@ -421,17 +421,44 @@
     }
 
     function confirmImport() {
+        // Disable buttons to prevent double-click
+        const confirmBtn = document.querySelector('#importModal .btn-primary');
+        const cancelBtn = document.querySelector('#importModal .btn-secondary');
+
+        if (confirmBtn) {
+            confirmBtn.disabled = true;
+            confirmBtn.innerHTML = '<span style="margin-right: 0.5rem;">⏳</span> Pracuji...';
+        }
+        if (cancelBtn) {
+            cancelBtn.disabled = true;
+        }
+
         // Determine which endpoint to call based on import type
         const endpoint = currentImportType === 'email'
-            ? '{{ url_for("fetch_confirm") }}'
-            : '{{ url_for("import_confirm") }}';
+            ? '{{ url_for("applicants.fetch_confirm") }}'
+            : '{{ url_for("settings.import_confirm") }}';
 
         // Submit to confirm endpoint
         fetch(endpoint, {
             method: 'POST'
-        }).then(() => {
-            window.location.reload();
-        });
+        }).then(response => response.json())
+            .then(data => {
+                if (data.errors && data.errors.length > 0) {
+                    Swal.fire('Info', 'Import dokončen s chybami:\n' + data.errors.join('\n'), 'warning');
+                }
+                window.location.reload();
+            }).catch(error => {
+                console.error('Error confirming import:', error);
+                Swal.fire('Chyba', 'Chyba při importu: ' + error, 'error');
+                // Re-enable buttons on error
+                if (confirmBtn) {
+                    confirmBtn.disabled = false;
+                    confirmBtn.innerHTML = 'Pokračovat';
+                }
+                if (cancelBtn) {
+                    cancelBtn.disabled = false;
+                }
+            });
     }
 
     // Close import modal on click outside
@@ -490,9 +517,15 @@
             const formData = new FormData();
             formData.append('note', noteText);
 
-            const response = await fetch(`/applicant/${currentNoteApplicantId}/update_note`, {
+            const response = await fetch(`/applicant/${currentNoteApplicantId}/update_field`, {
                 method: 'POST',
-                body: formData
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    field: 'note',
+                    value: noteText
+                })
             });
 
             const result = await response.json();
@@ -501,11 +534,11 @@
                 closeNoteModal();
                 window.location.reload();
             } else {
-                alert(`Chyba: ${result.error}`);
+                Swal.fire('Chyba', `Chyba: ${result.error}`, 'error');
             }
         } catch (error) {
             console.error('Error saving note:', error);
-            alert('Chyba při ukládání poznámky');
+            Swal.fire('Chyba', 'Chyba při ukládání poznámky', 'error');
         }
     }
 

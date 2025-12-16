@@ -14,7 +14,7 @@ if [ $? -ne 0 ]; then
 fi
 
 # Open browser after a short delay (in background)
-(sleep 2 && open http://localhost:5000) &
+(sleep 2 && open http://localhost:8000) &
 
 # Start the web app
 python3 web_app.py

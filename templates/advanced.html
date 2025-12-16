@@ -87,7 +87,8 @@
         </div>
         <div class="modal-actions">
             <button class="btn btn-secondary" onclick="closeClearDbModal()">Zrušit</button>
-            <form id="clearDbForm" action="{{ url_for('clear_database') }}" method="POST" style="display: inline;">
+            <form id="clearDbForm" action="{{ url_for('settings.clear_database') }}" method="POST"
+                style="display: inline;">
                 <button type="button" class="btn" style="background-color: #dc3545; color: white;"
                     onclick="submitClearDb()">Ano, smazat vše</button>
             </form>
@@ -265,7 +266,7 @@
     // Load changelog
     async function loadChangelog() {
         try {
-            const response = await fetch('/changelog');
+            const response = await fetch('{{ url_for("settings.changelog") }}');
             const data = await response.json();
             document.getElementById('changelogContent').innerHTML = data.content;
         } catch (error) {
@@ -305,7 +306,7 @@
         formData.append('csv_file', file);
 
         try {
-            const response = await fetch('{{ url_for("import_preview") }}', {
+            const response = await fetch('{{ url_for("settings.import_preview") }}', {
                 method: 'POST',
                 body: formData
             });
@@ -324,7 +325,7 @@
             modal.classList.add('active');
         } catch (error) {
             console.error('Error uploading CSV:', error);
-            alert('Chyba při nahrávání CSV souboru.');
+            Swal.fire('Chyba', 'Chyba při nahrávání CSV souboru.', 'error');
         }
 
         // Reset file input
@@ -352,13 +353,18 @@
             cancelBtn.disabled = true;
         }
 
-        fetch('{{ url_for("import_confirm") }}', {
+        fetch('{{ url_for("settings.import_confirm") }}', {
             method: 'POST'
-        }).then(() => {
-            window.location.href = '{{ url_for("index") }}';
+        }).then(async response => {
+            if (response.ok) {
+                window.location.href = '{{ url_for("applicants.index") }}';
+            } else {
+                const data = await response.json();
+                throw new Error(data.error || 'Import failed');
+            }
         }).catch(error => {
             console.error('Error confirming import:', error);
-            alert('Chyba při importu: ' + error);
+            Swal.fire('Chyba', 'Chyba při importu: ' + error.message, 'error');
             // Re-enable buttons on error
             if (confirmBtn) {
                 confirmBtn.disabled = false;
@@ -415,7 +421,7 @@
         const replyTo = document.getElementById('new_list_reply_to').value;
 
         if (!name || !fromName || !fromEmail || !replyTo) {
-            alert('Prosím vyplňte všechna povinná pole');
+            Swal.fire('Info', 'Prosím vyplňte všechna povinná pole', 'warning');
             return;
         }
 
@@ -426,7 +432,7 @@
             formData.append('from_email', fromEmail);
             formData.append('reply_to', replyTo);
 
-            const response = await fetch('/ecomail/create_list', {
+            const response = await fetch('{{ url_for("settings.ecomail_create_list") }}', {
                 method: 'POST',
                 body: formData
             });
@@ -437,11 +443,11 @@
                 closeCreateListModal();
                 window.location.reload();
             } else {
-                alert('Chyba při vytváření seznamu: ' + (result.error || 'Neznámá chyba'));
+                Swal.fire('Chyba', 'Chyba při vytváření seznamu: ' + (result.error || 'Neznámá chyba'), 'error');
             }
         } catch (error) {
             console.error('Error:', error);
-            alert('Chyba při vytváření seznamu');
+            Swal.fire('Chyba', 'Chyba při vytváření seznamu', 'error');
         }
     }
 
@@ -450,7 +456,7 @@
         const resultContainer = document.getElementById('lookup_result');
 
         if (!email) {
-            alert('Prosím zadejte emailovou adresu');
+            Swal.fire('Info', 'Prosím zadejte emailovou adresu', 'warning');
             return;
         }
 
@@ -461,7 +467,7 @@
             const formData = new FormData();
             formData.append('email', email);
 
-            const response = await fetch('/ecomail/subscriber', {
+            const response = await fetch('{{ url_for("settings.ecomail_subscriber") }}', {
                 method: 'POST',
                 body: formData
             });

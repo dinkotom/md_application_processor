@@ -13,22 +13,24 @@
         <h3>Věkové kategorie</h3>
         <div class="stat-item">
             <span class="stat-label">Pod 15 let:</span>
-            <span class="stat-value warning"><a href="{{ url_for('index', age_group='under_15') }}">{{ age_under_15
+            <span class="stat-value warning"><a href="{{ url_for('applicants.index', age_group='under_15') }}">{{
+                    age_under_15
                     }}</a></span>
         </div>
         <div class="stat-item">
             <span class="stat-label">15-18 let:</span>
-            <span class="stat-value success"><a href="{{ url_for('index', age_group='15_18') }}">{{ age_15_18
+            <span class="stat-value success"><a href="{{ url_for('applicants.index', age_group='15_18') }}">{{ age_15_18
                     }}</a></span>
         </div>
         <div class="stat-item">
             <span class="stat-label">19-24 let:</span>
-            <span class="stat-value success"><a href="{{ url_for('index', age_group='19_24') }}">{{ age_19_24
+            <span class="stat-value success"><a href="{{ url_for('applicants.index', age_group='19_24') }}">{{ age_19_24
                     }}</a></span>
         </div>
         <div class="stat-item">
             <span class="stat-label">Nad 24 let:</span>
-            <span class="stat-value warning"><a href="{{ url_for('index', age_group='over_24') }}">{{ age_over_24
+            <span class="stat-value warning"><a href="{{ url_for('applicants.index', age_group='over_24') }}">{{
+                    age_over_24
                     }}</a></span>
         </div>
     </div>
@@ -38,7 +40,7 @@
         {% for city, count in cities %}
         <div class="stat-item">
             <span class="stat-label">{{ city }}:</span>
-            <span class="stat-value"><a href="{{ url_for('index', city=city) }}">{{ count }}</a></span>
+            <span class="stat-value"><a href="{{ url_for('applicants.index', city=city) }}">{{ count }}</a></span>
         </div>
         {% endfor %}
     </div>
@@ -48,7 +50,7 @@
         {% for school, count in schools %}
         <div class="stat-item">
             <span class="stat-label">{{ school[:50] }}{% if school|length > 50 %}...{% endif %}:</span>
-            <span class="stat-value"><a href="{{ url_for('index', school=school) }}">{{ count }}</a></span>
+            <span class="stat-value"><a href="{{ url_for('applicants.index', school=school) }}">{{ count }}</a></span>
         </div>
         {% endfor %}
     </div>
@@ -58,7 +60,8 @@
         {% for interest, count in interests %}
         <div class="stat-item">
             <span class="stat-label">{{ interest }}:</span>
-            <span class="stat-value"><a href="{{ url_for('index', interest=interest) }}">{{ count }}</a></span>
+            <span class="stat-value"><a href="{{ url_for('applicants.index', interest=interest) }}">{{ count
+                    }}</a></span>
         </div>
         {% endfor %}
     </div>
@@ -68,7 +71,7 @@
         {% for source, count in sources %}
         <div class="stat-item">
             <span class="stat-label">{{ source }}:</span>
-            <span class="stat-value"><a href="{{ url_for('index', source=source) }}">{{ count }}</a></span>
+            <span class="stat-value"><a href="{{ url_for('applicants.index', source=source) }}">{{ count }}</a></span>
         </div>
         {% endfor %}
     </div>
@@ -78,7 +81,7 @@
         {% for char, count in characters %}
         <div class="stat-item">
             <span class="stat-label">{{ char }}:</span>
-            <span class="stat-value"><a href="{{ url_for('index', character=char) }}">{{ count }}</a></span>
+            <span class="stat-value"><a href="{{ url_for('applicants.index', character=char) }}">{{ count }}</a></span>
         </div>
         {% endfor %}
     </div>
@@ -86,12 +89,14 @@
         <h3>Pohlaví (odhad)</h3>
         <div class="stat-item">
             <span class="stat-label">Ženy:</span>
-            <span class="stat-value"><a href="{{ url_for('index', guessed_gender='female') }}">{{ gender_stats.female
+            <span class="stat-value"><a href="{{ url_for('applicants.index', guessed_gender='female') }}">{{
+                    gender_stats.female
                     }}</a></span>
         </div>
         <div class="stat-item">
             <span class="stat-label">Muži:</span>
-            <span class="stat-value"><a href="{{ url_for('index', guessed_gender='male') }}">{{ gender_stats.male
+            <span class="stat-value"><a href="{{ url_for('applicants.index', guessed_gender='male') }}">{{
+                    gender_stats.male
                     }}</a></span>
         </div>
     </div>

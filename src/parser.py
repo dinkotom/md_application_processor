@@ -1,6 +1,97 @@
 import re
 from typing import Dict, Optional
 from src.gender_utils import guess_gender
+from datetime import datetime
+
+def datetime_cz(value):
+    """Format datetime string to Czech format"""
+    if not value:
+        return ""
+    try:
+        # Handle microseconds if present (SQLite default)
+        if '.' in str(value):
+            value = str(value).split('.')[0]
+            
+        # Value comes from SQLite as YYYY-MM-DD HH:MM:SS
+        dt = datetime.strptime(value, '%Y-%m-%d %H:%M:%S')
+        return dt.strftime('%d. %m. %Y %H:%M:%S')
+    except (ValueError, TypeError):
+        return value
+
+def datetime_cz_minutes(value):
+    """Format datetime string to Czech format (minutes only)"""
+    if not value:
+        return ""
+    try:
+        # Handle microseconds if present
+        if '.' in str(value):
+            value = str(value).split('.')[0]
+            
+        dt = datetime.strptime(value, '%Y-%m-%d %H:%M:%S')
+        return dt.strftime('%d. %m. %Y %H:%M')
+    except (ValueError, TypeError):
+        return value
+
+def slugify_status(status):
+    """Convert status to CSS class friendly slug"""
+    if not status:
+        return 'nova'
+    
+    s = status.lower()
+    replacements = {
+        'á': 'a', 'č': 'c', 'ď': 'd', 'é': 'e', 'ě': 'e',
+        'í': 'i', 'ň': 'n', 'ó': 'o', 'ř': 'r', 'š': 's',
+        'ť': 't', 'ú': 'u', 'ů': 'u', 'ý': 'y', 'ž': 'z',
+        ' ': '-'
+    }
+    
+    for old, new in replacements.items():
+        s = s.replace(old, new)
+        
+    return s
+
+def normalize_phone(phone):
+    """Basic phone normalization"""
+    if not phone:
+        return phone
+    # Remove whitespace
+    return phone.replace(' ', '')
+
+def normalize_school(school_name):
+    """Normalize school names to group similar variations"""
+    if not school_name:
+        return school_name
+    
+    school = school_name.strip()
+    school_lower = school.lower()
+    
+    # Define normalization rules
+    normalizations = [
+        (['ostravská univerzita', 'osu'], 'Ostravská univerzita'),
+        (['všb-tuo', 'všb'], 'VŠB-TUO'),
+    ]
+    
+    for variations, canonical in normalizations:
+        for variation in variations:
+            if variation in school_lower:
+                return canonical
+    return school
+
+def calculate_age(dob_str):
+    """Calculate age from DOB string (DD.MM.YYYY or DD/MM/YYYY)"""
+    try:
+        if not dob_str:
+            return None
+        clean_dob = dob_str.strip().replace('/', '.')
+        dob = datetime.strptime(clean_dob, '%d.%m.%Y')
+        today = datetime.today()
+        age = today.year - dob.year - ((today.month, today.day) < (dob.month, dob.day))
+        
+        if age <= 0:
+            return None
+        return age
+    except (ValueError, TypeError):
+        return None
 
 def parse_email_body(body: str) -> Dict[str, str]:
     """
@@ -61,11 +152,15 @@ def parse_email_body(body: str) -> Dict[str, str]:
     data['newsletter'] = 1 if not newsletter_text else 0
 
     # Guess Gender
-    # Guess Gender
     data['guessed_gender'] = guess_gender(data.get('first_name', ''), data.get('last_name', ''))
-
+    
     # Store the full body for the document
     data['full_body'] = body
+    
+    # Debug logging
+    import logging
+    logger = logging.getLogger(__name__)
+    logger.info(f"Parsed email: Name='{data.get('first_name')}' '{data.get('last_name')}', Gender='{data.get('guessed_gender')}'")
     
     return data
 
@@ -102,7 +197,17 @@ def parse_csv_row(row: Dict[str, str]) -> Dict[str, str]:
         'email': row.get('email', '').strip(),
         'phone': row.get('telefon', '').strip(),
         'dob': row.get('datum_narozeni', '').strip(),
-        'membership_id': row.get('id', '').strip(),
+        'membership_id': (
+            row.get('id') or 
+            row.get('ID') or 
+            row.get('cislo_karty') or 
+            row.get('číslo_karty') or 
+            row.get('cislo karty') or
+            row.get('číslo karty') or
+            row.get('membership_id') or 
+            row.get('card_number') or 
+            ''
+        ).strip(),
         'city': row.get('bydliste', '').strip(),
         'school': row.get('skola', '').strip(),
         'interests': row.get('oblast_kultury', '').strip(),

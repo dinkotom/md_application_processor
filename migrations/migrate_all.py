@@ -3,6 +3,7 @@
 Unified migration runner to execute all migration scripts
 """
 import sys
+import os
 import logging
 import importlib.util
 
@@ -21,6 +22,8 @@ MIGRATIONS = [
     ('migrate_newsletter_integer', 'migrate_newsletter_to_integer'),
     ('migrate_remove_email_template', 'migrate_database'),
     ('migrate_gender', 'migrate_db'),
+    ('migrate_phone_warning', 'migrate_database'),
+    ('migrate_export_presets', 'migrate'),
 ]
 
 def run_migrations(db_path):
@@ -33,7 +36,8 @@ def run_migrations(db_path):
             if module_name in sys.modules:
                 module = sys.modules[module_name]
             else:
-                spec = importlib.util.spec_from_file_location(module_name, f"{module_name}.py")
+                # Import module from current directory
+                spec = importlib.util.spec_from_file_location(module_name, os.path.join(os.path.dirname(__file__), f"{module_name}.py"))
                 if spec and spec.loader:
                     module = importlib.util.module_from_spec(spec)
                     sys.modules[module_name] = module
@@ -57,6 +61,11 @@ def run_migrations(db_path):
     logger.info(f"Migrations completed for {db_path}")
 
 if __name__ == '__main__':
-    databases = ['applications_test.db', 'applications.db']
+    # Database paths relative to project root (one level up)
+    project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    databases = [
+        os.path.join(project_root, 'applications_test.db'),
+        os.path.join(project_root, 'applications.db')
+    ]
     for db in databases:
         run_migrations(db)

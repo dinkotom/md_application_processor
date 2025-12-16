@@ -12,7 +12,8 @@
         <p style="color: #666; margin-bottom: 1.5rem;">Přetáhněte pole z nabídky do výběru a určete jejich pořadí v
             Excelu.</p>
 
-        <form action="{{ url_for('export_excel') }}" method="POST" id="excelExportForm" onsubmit="prepareExportForm()">
+        <form action="{{ url_for('applicants.export_excel') }}" method="POST" id="excelExportForm"
+            onsubmit="prepareExportForm()">
             <div class="dnd-container">
                 <!-- Left Column: Available Fields -->
                 <div class="dnd-column">
@@ -76,11 +77,62 @@
             </button>
         </form>
     </div>
+
+    <!-- Presets Section -->
+    <div class="stat-card" style="grid-column: span 3; margin-top: 1rem;">
+        <h3>💾 Uložené šablony</h3>
+        <p style="color: #666; font-size: 0.9rem;">Uložte si aktuální výběr a pořadí polí pro příští použití.</p>
+
+        <div style="display: flex; gap: 1rem; align-items: flex-end; margin-bottom: 2rem;">
+            <div style="flex-grow: 1;">
+                <label for="presetName" style="display: block; margin-bottom: 0.5rem; font-size: 0.9rem;">Název
+                    šablony</label>
+                <input type="text" id="presetName" placeholder="Např. Standardní export" class="form-control"
+                    style="width: 100%;">
+            </div>
+            <button onclick="savePreset()" class="btn btn-secondary">Uložit aktuální výběr</button>
+        </div>
+
+        <div id="presetsList"
+            style="display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 1rem;">
+            <!-- Presets will be loaded here -->
+        </div>
+    </div>
 </div>
 
 <style>
     .stats-header {
         margin-bottom: 2rem;
+    }
+
+    /* ... existing styles ... */
+
+    .preset-card {
+        background: #f8f9fa;
+        border: 1px solid #ddd;
+        border-radius: 6px;
+        padding: 1rem;
+        display: flex;
+        flex-direction: column;
+        justify-content: space-between;
+    }
+
+    .preset-card h5 {
+        margin: 0 0 0.5rem 0;
+        font-size: 1rem;
+    }
+
+    .preset-actions {
+        display: flex;
+        gap: 0.5rem;
+        margin-top: 1rem;
+    }
+
+    .form-control {
+        padding: 0.5rem;
+        border: 1px solid #ddd;
+        border-radius: 4px;
+        font-size: 1rem;
     }
 
     .stats-header h2 {
@@ -171,11 +223,18 @@
         .dnd-container {
             grid-template-columns: 1fr;
         }
+
+        .stats-grid {
+            /* allow single column layout for grid items on mobile if needed */
+        }
     }
 </style>
 
 <script>
     let draggedItem = null;
+
+    // Load available presets on mount
+    document.addEventListener('DOMContentLoaded', loadPresets);
 
     function allowDrop(ev) {
         ev.preventDefault();
@@ -228,6 +287,146 @@
         });
 
         return true;
+    }
+
+    function getSelectedFields() {
+        const selectedItems = document.querySelectorAll('#selectedFields .dnd-item');
+        return Array.from(selectedItems).map(item => item.getAttribute('data-value'));
+    }
+
+    async function savePreset() {
+        const nameInput = document.getElementById('presetName');
+        const name = nameInput.value.trim();
+        const fields = getSelectedFields();
+
+        if (!name) {
+            Swal.fire('Info', 'Zadejte název šablony.', 'info');
+            return;
+        }
+
+        if (fields.length === 0) {
+            Swal.fire('Info', 'Vyberte alespoň jedno pole.', 'info');
+            return;
+        }
+
+        try {
+            const response = await fetch('/export/presets', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ name, fields })
+            });
+
+            const result = await response.json();
+            if (result.success) {
+                nameInput.value = '';
+                loadPresets();
+            } else {
+                Swal.fire('Chyba', 'Chyba při ukládání: ' + result.error, 'error');
+            }
+        } catch (err) {
+            Swal.fire('Chyba', 'Chyba komunikace se serverem.', 'error');
+        }
+    }
+
+    async function loadPresets() {
+        try {
+            const response = await fetch('/export/presets');
+            const result = await response.json();
+
+            if (result.success) {
+                renderPresets(result.presets);
+            }
+        } catch (err) {
+            console.error('Failed to load presets', err);
+        }
+    }
+
+    function renderPresets(presets) {
+        const container = document.getElementById('presetsList');
+        container.innerHTML = '';
+
+        if (presets.length === 0) {
+            container.innerHTML = '<p style="color: #999; grid-column: span 3;">Zatím žádné uložené šablony.</p>';
+            return;
+        }
+
+        presets.forEach(p => {
+            const div = document.createElement('div');
+            div.className = 'preset-card';
+
+            const fieldCount = JSON.parse(p.fields).length;
+
+            div.innerHTML = `
+                <div>
+                    <h5>${p.name}</h5>
+                    <small style="color: #666;">${fieldCount} polí</small>
+                </div>
+                <div class="preset-actions">
+                    <button class="btn btn-small btn-primary" onclick='applyPreset(${p.fields})'>Načíst</button>
+                    <button class="btn btn-small btn-danger" onclick="deletePreset(${p.id})">×</button>
+                </div>
+            `;
+            container.appendChild(div);
+        });
+    }
+
+    async function deletePreset(id) {
+        const result = await Swal.fire({
+            title: 'Opravdu smazat?',
+            text: "Tuto akci nelze vzít zpět.",
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: '#d33',
+            cancelButtonColor: '#3085d6',
+            confirmButtonText: 'Ano, smazat',
+            cancelButtonText: 'Zrušit'
+        });
+
+        if (result.isConfirmed) {
+            try {
+                const response = await fetch(`/export/presets/${id}`, { method: 'DELETE' });
+                if (response.ok) {
+                    loadPresets();
+                    Swal.fire('Smazáno!', 'Šablona byla vymazána.', 'success');
+                }
+            } catch (err) {
+                Swal.fire('Chyba', 'Chyba při mazání.', 'error');
+            }
+        }
+    }
+
+    function applyPreset(fieldsList) {
+        // fieldsList is array of strings (ids)
+        const availableContainer = document.getElementById('availableFields');
+        const selectedContainer = document.getElementById('selectedFields');
+
+        // Gather all existing items from both lists
+        const allItems = [...availableContainer.children, ...selectedContainer.children];
+        const itemMap = {};
+
+        allItems.forEach(item => {
+            if (item.classList.contains('dnd-item')) {
+                itemMap[item.getAttribute('data-value')] = item;
+            }
+        });
+
+        // Clear containers
+        // Note: we're moving elements, so we don't strictly destroy them, 
+        // effectively re-appending them to new parents clears old parents
+
+        // Move specified fields to selected container in ORDER
+        fieldsList.forEach(fieldId => {
+            const item = itemMap[fieldId];
+            if (item) {
+                selectedContainer.appendChild(item);
+                delete itemMap[fieldId];
+            }
+        });
+
+        // Move remaining fields to available container
+        Object.values(itemMap).forEach(item => {
+            availableContainer.appendChild(item);
+        });
     }
 </script>
 
