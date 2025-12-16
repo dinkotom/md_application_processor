@@ -97,7 +97,7 @@ def get_recipient_email(applicant_email, mode):
     return applicant_email
 
 
-def send_email_with_card(applicant_data, subject, body, card_image_bytes, email_user, email_pass, mode='test', use_html=False):
+def send_email_with_card(applicant_data, subject, body, card_image_bytes, email_user, email_pass, mode='test', use_html=False, copy_to=None):
     """
     Send email with membership card attachment
     
@@ -110,6 +110,7 @@ def send_email_with_card(applicant_data, subject, body, card_image_bytes, email_
         email_pass: SMTP password
         mode: 'test' or 'production'
         use_html: If True, treat body as HTML content
+        copy_to: Optional email address to copy (CC) - mainly for test mode
     
     Returns:
         Dict with success status and message
@@ -126,12 +127,17 @@ def send_email_with_card(applicant_data, subject, body, card_image_bytes, email_
         # Get recipient
         recipient = get_recipient_email(applicant_data.get('email'), mode)
         
+        # In test mode, append copy_to if provided
+        to_header = recipient
+        if mode == 'test' and copy_to:
+            to_header = f"{recipient}, {copy_to}"
+        
         # Create message
         msg = MIMEMultipart()
         # Use simple string for From to avoid issues, preferably matching the account
         msg['From'] = email_user 
         msg['Reply-To'] = "info@mladydivak.cz"
-        msg['To'] = recipient
+        msg['To'] = to_header
         msg['Subject'] = rendered_subject
         
         # Add body (HTML or plain text)
@@ -162,12 +168,12 @@ def send_email_with_card(applicant_data, subject, body, card_image_bytes, email_
             server.login(email_user, email_pass)
             server.send_message(msg)
             
-        print(f"DEBUG: Email sent via SMTP to {recipient} from {email_user}")
+        print(f"DEBUG: Email sent via SMTP to {to_header} from {email_user}")
         
         return {
             'success': True,
-            'message': f'Email sent successfully to {recipient}',
-            'recipient': recipient
+            'message': f'Email sent successfully to {to_header}',
+            'recipient': to_header
         }
         
     except Exception as e:
@@ -178,7 +184,7 @@ def send_email_with_card(applicant_data, subject, body, card_image_bytes, email_
         }
 
 
-def send_welcome_email(applicant_data, card_image_bytes, email_user, email_pass, mode='test'):
+def send_welcome_email(applicant_data, card_image_bytes, email_user, email_pass, mode='test', copy_to=None):
     """
     Send welcome email using the official HTML template
     
@@ -188,6 +194,7 @@ def send_welcome_email(applicant_data, card_image_bytes, email_user, email_pass,
         email_user: SMTP username
         email_pass: SMTP password
         mode: 'test' or 'production'
+        copy_to: Optional email address to receive copy in test mode
     
     Returns:
         Dict with success status and message
@@ -211,7 +218,8 @@ def send_welcome_email(applicant_data, card_image_bytes, email_user, email_pass,
         email_user=email_user,
         email_pass=email_pass,
         mode=mode,
-        use_html=True
+        use_html=True,
+        copy_to=copy_to
     )
 
 

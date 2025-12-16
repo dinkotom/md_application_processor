@@ -438,7 +438,10 @@ def send_welcome_email_route(id):
     # Determine mode from session
     mode = session.get('mode', 'test')
     
-    result = send_welcome_email(app_data, card_bytes, email_user, email_pass, mode=mode)
+    # In test mode, we want to copy the logged-in user
+    user_email = session.get('user', {}).get('email')
+    
+    result = send_welcome_email(app_data, card_bytes, email_user, email_pass, mode=mode, copy_to=user_email)
     
     if result['success']:
         # Update DB
