@@ -1,4 +1,4 @@
-## [1.8.4] - 2026-01-11
+## [2.0.0] - 2026-01-11
 
 ### Přidáno
 - **Export**: Přidána možnost filtrování exportu podle stavu přihlášky (multi-select) s možností uložení do předvoleb.
