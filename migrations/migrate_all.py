@@ -11,6 +11,11 @@ import importlib.util
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
 
+# Ensure project root is in sys.path
+project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+if project_root not in sys.path:
+    sys.path.insert(0, project_root)
+
 # List of migration modules and their entry functions
 MIGRATIONS = [
     ('migrate_db', 'migrate_db'),
@@ -24,6 +29,7 @@ MIGRATIONS = [
     ('migrate_gender', 'migrate_db'),
     ('migrate_phone_warning', 'migrate_database'),
     ('migrate_export_presets', 'migrate'),
+    ('migrate_export_presets_status', 'migrate'),
 ]
 
 def run_migrations(db_path):

@@ -67,6 +67,8 @@ class TestWelcomeEmail(unittest.TestCase):
             if key == 'EMAIL_USER': return self.email_user
             if key == 'EMAIL_PASS': return self.email_pass
             if key == 'IMAP_SERVER': return 'imap.mock.com'
+            if key == 'SMTP_HOST': return 'smtp.custom.com'
+            if key == 'SMTP_PORT': return '465'
             return default
         mock_getenv.side_effect = getenv_side_effect
         
@@ -108,7 +110,10 @@ class TestWelcomeEmail(unittest.TestCase):
         call_args = mock_server_instance.send_message.call_args
         msg = call_args[0][0] # First arg is the message
         
-        self.assertEqual(msg['From'], self.email_user)
+        # Verify SMTP init with custom host/port
+        mock_smtp.assert_called_with('smtp.custom.com', 465)
+        # Verify From Header
+        self.assertEqual(msg['From'], "Mladý divák <info@mladydivak.cz>")
         self.assertEqual(msg['To'], 'jan.novak@example.com') # Because we set mode=production
         self.assertEqual(msg['Subject'], 'Vítej v klubu Mladého diváka')
         self.assertEqual(msg['Reply-To'], 'info@mladydivak.cz')
@@ -150,13 +155,13 @@ class TestWelcomeEmail(unittest.TestCase):
         self.assertEqual(resp.status_code, 200)
         self.assertEqual(resp.json['success'], True)
         self.assertEqual(resp.json['mode'], 'test')
-        self.assertEqual(resp.json['recipient'], 'u7745030724@gmail.com')
+        self.assertEqual(resp.json['recipient'], 'u7745030724@gmail.com, admin@test.com')
         
         call_args = mock_server_instance.send_message.call_args
         msg = call_args[0][0]
         
-        # MUST be the safe address
-        self.assertEqual(msg['To'], 'u7745030724@gmail.com')
+        # MUST be the safe address + copy
+        self.assertEqual(msg['To'], 'u7745030724@gmail.com, admin@test.com')
         # MUST NOT be the real user
         self.assertNotEqual(msg['To'], 'jan.novak@example.com')
         
@@ -195,6 +200,51 @@ class TestWelcomeEmail(unittest.TestCase):
         self.assertTrue(len(logs) > 0)
         self.assertEqual(logs[0]['action'], "Odeslán uvítací email")
         self.assertEqual(logs[0]['user'], 'admin@test.com')
+
+    @patch('src.email_sender.smtplib.SMTP')
+    @patch('src.email_sender.load_welcome_email_template')
+    @patch('src.generator.generate_card')
+    @patch('os.getenv')
+    @patch('src.database.get_db_path')
+    def test_send_welcome_email_starttls(self, mock_get_db_path, mock_getenv, mock_gen_card, mock_load_template, mock_smtp):
+        """test sending with STARTTLS (port 587)"""
+        mock_get_db_path.return_value = self.db_path
+        applicant_id = self._create_applicant()
+
+        # Mock env for STARTTLS
+        def getenv_side_effect(key, default=None):
+            if key == 'EMAIL_USER': return self.email_user
+            if key == 'EMAIL_PASS': return self.email_pass
+            if key == 'SMTP_HOST': return 'smtp.starttls.com'
+            if key == 'SMTP_PORT': return '587'
+            return default
+        mock_getenv.side_effect = getenv_side_effect
+        
+        mock_gen_card.return_value = BytesIO(b'\x89PNG\r\n\x1a\n\x00\x00\x00\rIHDR')
+        mock_load_template.return_value = ("<html></html>", "path")
+        
+        mock_server = MagicMock()
+        mock_smtp.return_value.__enter__.return_value = mock_server
+
+        # Login
+        with self.client.session_transaction() as sess:
+            sess['user'] = {'email': 'admin@test.com'}
+            sess['mode'] = 'production'
+
+        resp = self.client.post(f'/applicant/{applicant_id}/send_welcome_email')
+
+
+
+        self.assertEqual(resp.status_code, 200)
+        self.assertEqual(resp.json['success'], True)
+
+        # Verify SMTP (not SSL) was used
+        mock_smtp.assert_called_with('smtp.starttls.com', 587)
+        # Verify starttls called
+        mock_server.starttls.assert_called_once()
+        # Verify login and send
+        mock_server.login.assert_called_with(self.email_user, self.email_pass)
+        mock_server.send_message.assert_called_once()
 
 if __name__ == '__main__':
     unittest.main()

@@ -3,7 +3,22 @@ import os
 import logging
 from flask import session
 
+import unicodedata
+
 logger = logging.getLogger(__name__)
+
+def remove_diacritics(text):
+    """
+    Remove diacritics from text (comparable to unaccent in PostgreSQL).
+    Example: 'Štěpánka' -> 'stepanka', 'Malečková' -> 'maleckova'
+    """
+    if not text:
+        return ""
+    text = str(text)
+    # Normalize unicode to decompose characters
+    nfkd_form = unicodedata.normalize('NFKD', text)
+    # Filter out non-spacing mark characters
+    return "".join([c for c in nfkd_form if not unicodedata.combining(c)]).lower()
 
 # Database paths
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -19,6 +34,7 @@ def get_db_connection():
     """Get database connection"""
     db_path = get_db_path()
     conn = sqlite3.connect(db_path)
+    conn.create_function("remove_diacritics", 1, remove_diacritics)
     conn.row_factory = sqlite3.Row
     return conn
 

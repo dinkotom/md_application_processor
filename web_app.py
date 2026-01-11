@@ -25,7 +25,7 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 # Version
-VERSION = '1.8.3'
+VERSION = '1.8.4'
 
 def create_app():
     app = Flask(__name__)

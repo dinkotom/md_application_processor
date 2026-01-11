@@ -27,7 +27,11 @@ def get_filtered_applicants(request_args):
     
     # Get parameters
     search = request_args.get('search', '')
-    filter_status = request_args.get('status', '')
+    # Handle status as list if multiple values provided (e.g. from export form checkboxes)
+    filter_status = request_args.getlist('status') if hasattr(request_args, 'getlist') else [request_args.get('status')]
+    # Clean up empty strings and single-item list that is effectively empty
+    filter_status = [s for s in filter_status if s]
+    
     filter_age_group = request_args.get('age_group', '')
     filter_city = request_args.get('city', '')
     filter_school = request_args.get('school', '')
@@ -44,13 +48,20 @@ def get_filtered_applicants(request_args):
     params = []
     
     if search:
-        query += " AND (first_name LIKE ? OR last_name LIKE ? OR email LIKE ? OR city LIKE ?)"
+        # Use remove_diacritics for diacritic-insensitive search
+        query += " AND (remove_diacritics(first_name) LIKE remove_diacritics(?) OR remove_diacritics(last_name) LIKE remove_diacritics(?) OR remove_diacritics(email) LIKE remove_diacritics(?) OR remove_diacritics(city) LIKE remove_diacritics(?))"
         search_param = f"%{search}%"
         params.extend([search_param, search_param, search_param, search_param])
     
     if filter_status:
-        query += " AND status = ?"
-        params.append(filter_status)
+        # Check if it's a list or single value
+        if isinstance(filter_status, list) and len(filter_status) > 0:
+            placeholders = ','.join(['?'] * len(filter_status))
+            query += f" AND status IN ({placeholders})"
+            params.extend(filter_status)
+        elif isinstance(filter_status, str):
+            query += " AND status = ?"
+            params.append(filter_status)
 
     if filter_source:
         query += " AND source = ?"
@@ -330,7 +341,8 @@ def delete_applicant(id):
     if 'user' in session:
         log_action(id, "Smazání přihlášky", session['user']['email'])
         
-    return redirect(url_for('applicants.index'))
+    next_url = request.form.get('next') or request.args.get('next')
+    return redirect(next_url or url_for('applicants.index'))
 
 @applicants_bp.route('/applicant/<int:id>/status', methods=['POST'])
 @login_required
@@ -346,7 +358,8 @@ def update_applicant_status(id):
         
         log_action(id, "Změna stavu", session['user']['email'], old_status, new_status)
         
-    return redirect(request.referrer or url_for('applicants.index'))
+    next_url = request.form.get('next') or request.args.get('next')
+    return redirect(next_url or request.referrer or url_for('applicants.index'))
 
 @applicants_bp.route('/applicant/<int:id>/dismiss-parent-warning', methods=['POST'])
 @login_required
@@ -428,8 +441,10 @@ def send_welcome_email_route(id):
         return jsonify({'success': False, 'error': f'Card generation failed: {str(e)}'}), 500
 
     # Get credentials
-    email_user = os.getenv('EMAIL_USER')
-    email_pass = os.getenv('EMAIL_PASS')
+    email_user = os.getenv('SMTP_USER')
+    email_pass = os.getenv('SMTP_PASS')
+    smtp_host = os.getenv('SMTP_HOST', 'smtp.gmail.com')
+    smtp_port = os.getenv('SMTP_PORT', 465)
     
     if not email_user or not email_pass:
         conn.close()
@@ -441,7 +456,16 @@ def send_welcome_email_route(id):
     # In test mode, we want to copy the logged-in user
     user_email = session.get('user', {}).get('email')
     
-    result = send_welcome_email(app_data, card_bytes, email_user, email_pass, mode=mode, copy_to=user_email)
+    result = send_welcome_email(
+        app_data, 
+        card_bytes, 
+        email_user, 
+        email_pass, 
+        mode=mode, 
+        copy_to=user_email,
+        smtp_host=smtp_host,
+        smtp_port=smtp_port
+    )
     
     if result['success']:
         # Update DB
@@ -470,7 +494,10 @@ def _prepare_ecomail_data(app_data):
     # Character as tag
     char_val = app_data.get('character')
     if char_val:
-        tags.append(char_val)
+        for char_item in str(char_val).split(','):
+            cleaned = char_item.strip()
+            if cleaned:
+                tags.append(cleaned)
         
     # Interests as tags (comma separated)
     interests_val = app_data.get('interests')
@@ -483,7 +510,7 @@ def _prepare_ecomail_data(app_data):
     # School as tag
     school_val = app_data.get('school')
     if school_val:
-        tags.append(school_val)
+        tags.append(str(school_val).replace(',', ' '))
 
     # Prepare subscriber data
     subscriber_data = {
@@ -753,16 +780,18 @@ def save_export_preset():
     data = request.get_json()
     name = data.get('name')
     fields = data.get('fields') # List of field IDs
+    status_filter = data.get('status_filter') # List of statuses (optional)
     
     if not name or not fields:
         return jsonify({'success': False, 'error': 'Missing name or fields'}), 400
         
     import json
     fields_json = json.dumps(fields)
+    status_json = json.dumps(status_filter) if status_filter else None
     
     conn = get_db_connection()
     try:
-        conn.execute('INSERT INTO export_presets (name, fields) VALUES (?, ?)', (name, fields_json))
+        conn.execute('INSERT INTO export_presets (name, fields, filter_status) VALUES (?, ?, ?)', (name, fields_json, status_json))
         conn.commit()
     except Exception as e:
         conn.close()
@@ -791,6 +820,14 @@ def export_excel():
     
     # Get selected fields from form
     selected_fields = request.form.getlist('fields')
+    # Status is already handled by get_filtered_applicants reading from request.form/request.args
+    # Note: request.args is usually GET, request.form is POST. 
+    # get_filtered_applicants takes "request_args" which can be a CombinedMultiDict or just request.values
+    # We should pass request.values to cover both or construct a dict
+    
+    # We need to construct args that include the POST form data for status checkboxes
+    # Filter args from request.form (status)
+    filter_args = request.values
     
     # Validate at least one field is selected
     if not selected_fields:
@@ -810,7 +847,7 @@ def export_excel():
         'dob': ('Datum narození', 'dob'),
         'city': ('Město', 'city'),
         'school': ('Škola', 'school'),
-        'status': ('Status', 'status'),
+        'status': ('Stav', 'status'),
         'application_received': ('Datum přijetí', 'application_received'),
         'created_at': ('Vytvořeno', 'created_at'),
         'interests': ('Zájmy', 'interests'),
@@ -824,7 +861,7 @@ def export_excel():
         'guessed_gender': ('Pohlaví (odhad)', 'guessed_gender')
     }
     
-    applicants = get_filtered_applicants(request.args)
+    applicants = get_filtered_applicants(filter_args)
     
     wb = openpyxl.Workbook()
     ws = wb.active

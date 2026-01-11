@@ -14,6 +14,26 @@
 
         <form action="{{ url_for('applicants.export_excel') }}" method="POST" id="excelExportForm"
             onsubmit="prepareExportForm()">
+
+            <!-- Filter Section -->
+            <div
+                style="background: #f8f9fa; padding: 1rem; border-radius: 6px; border: 1px solid #ddd; margin-bottom: 1.5rem;">
+                <h4 style="margin-top: 0; margin-bottom: 0.5rem; font-size: 1rem;">Filtr podle stavu</h4>
+                <div style="display: flex; gap: 1rem; flex-wrap: wrap;">
+                    <label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer;">
+                        <input type="checkbox" name="status" value="Nová" class="status-filter"> Nová
+                    </label>
+                    <label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer;">
+                        <input type="checkbox" name="status" value="Zpracovává se" class="status-filter"> Zpracovává se
+                    </label>
+                    <label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer;">
+                        <input type="checkbox" name="status" value="Vyřízená" class="status-filter"> Vyřízená
+                    </label>
+                </div>
+                <small style="color: #666; display: block; margin-top: 0.5rem;">Pokud není vybráno nic, exportují se
+                    všechny stavy.</small>
+            </div>
+
             <div class="dnd-container">
                 <!-- Left Column: Available Fields -->
                 <div class="dnd-column">
@@ -63,7 +83,7 @@
                         <div class="dnd-item" draggable="true" ondragstart="drag(event)" data-value="school">Škola</div>
                         <div class="dnd-item" draggable="true" ondragstart="drag(event)" data-value="membership_id">
                             Členské číslo</div>
-                        <div class="dnd-item" draggable="true" ondragstart="drag(event)" data-value="status">Status
+                        <div class="dnd-item" draggable="true" ondragstart="drag(event)" data-value="status">Stav
                         </div>
                     </div>
                 </div>
@@ -299,6 +319,10 @@
         const name = nameInput.value.trim();
         const fields = getSelectedFields();
 
+        // Get selected statuses
+        const statusCheckboxes = document.querySelectorAll('.status-filter:checked');
+        const statusFilter = Array.from(statusCheckboxes).map(cb => cb.value);
+
         if (!name) {
             Swal.fire('Info', 'Zadejte název šablony.', 'info');
             return;
@@ -313,7 +337,7 @@
             const response = await fetch('/export/presets', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ name, fields })
+                body: JSON.stringify({ name, fields, status_filter: statusFilter })
             });
 
             const result = await response.json();
@@ -356,14 +380,21 @@
 
             const fieldCount = JSON.parse(p.fields).length;
 
+
+            // Handle potentially missing/null filter_status
+            const statusJson = p.filter_status || '[]';
+
             div.innerHTML = `
                 <div>
                     <h5>${p.name}</h5>
-                    <small style="color: #666;">${fieldCount} polí</small>
+                    <small style="color: #666;">
+                        ${fieldCount} polí
+                        ${JSON.parse(statusJson).length > 0 ? '<br>Filtrováno podle stavu' : ''}
+                    </small>
                 </div>
                 <div class="preset-actions">
-                    <button class="btn btn-small btn-primary" onclick='applyPreset(${p.fields})'>Načíst</button>
-                    <button class="btn btn-small btn-danger" onclick="deletePreset(${p.id})">×</button>
+                    <button type="button" class="btn btn-small btn-primary" onclick='applyPreset(${p.fields}, ${statusJson})'>Načíst</button>
+                    <button type="button" class="btn btn-small btn-danger" onclick="deletePreset(${p.id})">×</button>
                 </div>
             `;
             container.appendChild(div);
@@ -395,7 +426,16 @@
         }
     }
 
-    function applyPreset(fieldsList) {
+    function applyPreset(fieldsList, statusList) {
+        // Apply status filter
+        const checkboxes = document.querySelectorAll('.status-filter');
+        checkboxes.forEach(cb => {
+            cb.checked = false; // Reset first
+            if (statusList && statusList.includes(cb.value)) {
+                cb.checked = true;
+            }
+        });
+
         // fieldsList is array of strings (ids)
         const availableContainer = document.getElementById('availableFields');
         const selectedContainer = document.getElementById('selectedFields');

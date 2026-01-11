@@ -1,3 +1,20 @@
+## [1.8.4] - 2026-01-11
+
+### Přidáno
+- **Export**: Přidána možnost filtrování exportu podle stavu přihlášky (multi-select) s možností uložení do předvoleb.
+- **UI**: Duplikována paginace i nad seznam přihlášek pro lepší navigaci. Horní paginace je umístěna v liště filtrů.
+- **UI**: Paginace zůstává viditelná (deaktivovaná) i při jedné stránce výsledků, aby se zabránilo poskocích layoutu.
+
+### Změněno
+- **Hledání**: Vyhledávání je nyní ignoruje diakritiku (např. "Štěpán" najde i "Stepan").
+- **Export**: Přejmenováno pole "Status" na "Stav" pro sjednocení názvosloví.
+
+### Opraveno
+- **Navigace**: Opraveno přesměrování po změně stavu nebo smazání přihlášky - aplikace nyní zachovává aktuální stránku, filtry a řazení.
+- **Ecomail**: Opravena chyba 422 při synchronizaci kontaktů obsahujících čárky ve štítcích (např. v poli charakter nebo škola).
+
+---
+
 ## [1.8.3] - 2025-12-14
 
 ### Opraveno

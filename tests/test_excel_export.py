@@ -66,6 +66,7 @@ class TestExcelExport(unittest.TestCase):
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 name TEXT NOT NULL,
                 fields TEXT NOT NULL,
+                filter_status TEXT,
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             )
         ''')
