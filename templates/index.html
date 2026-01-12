@@ -24,7 +24,8 @@
     </form>
 
     <!-- Status and Alert Filter Buttons -->
-    <div style="display: flex; justify-content: space-between; align-items: center; gap: 1rem; margin-bottom: 1rem;">
+    <div
+        style="display: flex; justify-content: space-between; align-items: center; gap: 1rem; margin-bottom: 1rem; flex-wrap: wrap;">
         <!-- Status Filter Buttons (Left) -->
         <div class="status-filter-buttons">
             <a href="{{ url_for('applicants.index', status='Nová', search=search, age_group=filter_age_group, city=filter_city, school=filter_school, interest=filter_interest, source=filter_source, alerts=filter_alerts) }}"
@@ -46,6 +47,52 @@
             </a>
             {% endif %}
         </div>
+
+        {% if total_pages >= 1 %}
+        <div class="pagination"
+            style="margin: 0; padding: 0; border: none; background: transparent; justify-content: center;">
+            <!-- First Page -->
+            {% if page > 1 %}
+            <a href="{{ url_for('applicants.index', page=1, search=search, status=filter_status, age_group=filter_age_group, city=filter_city, school=filter_school, interest=filter_interest, source=filter_source, alerts=filter_alerts, character=filter_character) }}"
+                class="btn btn-secondary" title="První stránka" style="padding: 0.25rem 0.6rem; font-size: 0.9em;">
+                &laquo;&laquo;
+            </a>
+            <a href="{{ url_for('applicants.index', page=page-1, search=search, status=filter_status, age_group=filter_age_group, city=filter_city, school=filter_school, interest=filter_interest, source=filter_source, alerts=filter_alerts, character=filter_character) }}"
+                class="btn btn-secondary" title="Předchozí stránka" style="padding: 0.25rem 0.6rem; font-size: 0.9em;">
+                &laquo;
+            </a>
+            {% else %}
+            <span class="btn btn-secondary disabled"
+                style="padding: 0.25rem 0.6rem; font-size: 0.9em; opacity: 0.5;">&laquo;&laquo;</span>
+            <span class="btn btn-secondary disabled"
+                style="padding: 0.25rem 0.6rem; font-size: 0.9em; opacity: 0.5;">&laquo;</span>
+            {% endif %}
+
+            <!-- Page Info -->
+            <span
+                style="font-size: 0.9em; color: #666; font-weight: 500; margin: 0 0.5rem; background: #fff; padding: 0.25rem 0.75rem; border-radius: 4px; border: 1px solid #ddd;">
+                {{ page }} / {{ total_pages }}
+            </span>
+
+            <!-- Next/Last Page -->
+            {% if page < total_pages %} <a
+                href="{{ url_for('applicants.index', page=page+1, search=search, status=filter_status, age_group=filter_age_group, city=filter_city, school=filter_school, interest=filter_interest, source=filter_source, alerts=filter_alerts, character=filter_character) }}"
+                class="btn btn-secondary" title="Další stránka" style="padding: 0.25rem 0.6rem; font-size: 0.9em;">
+                &raquo;
+                </a>
+                <a href="{{ url_for('applicants.index', page=total_pages, search=search, status=filter_status, age_group=filter_age_group, city=filter_city, school=filter_school, interest=filter_interest, source=filter_source, alerts=filter_alerts, character=filter_character) }}"
+                    class="btn btn-secondary" title="Poslední stránka"
+                    style="padding: 0.25rem 0.6rem; font-size: 0.9em;">
+                    &raquo;&raquo;
+                </a>
+                {% else %}
+                <span class="btn btn-secondary disabled"
+                    style="padding: 0.25rem 0.6rem; font-size: 0.9em; opacity: 0.5;">&raquo;</span>
+                <span class="btn btn-secondary disabled"
+                    style="padding: 0.25rem 0.6rem; font-size: 0.9em; opacity: 0.5;">&raquo;&raquo;</span>
+                {% endif %}
+        </div>
+        {% endif %}
 
         <!-- Alert Filter Button (Right) -->
         <div>
@@ -95,6 +142,9 @@
     </div>
     {% endif %}
 </div>
+
+<!-- Pagination (Top) -->
+
 
 <div class="table-container">
     <table class="applicants-table">
@@ -151,6 +201,7 @@
                 <td onclick="event.stopPropagation()">
                     <form action="{{ url_for('applicants.update_applicant_status', id=app.id) }}" method="POST"
                         style="margin: 0;">
+                        <input type="hidden" name="next" value="{{ url_for('applicants.index', **request.args) }}">
                         <select name="status" onchange="this.form.submit()"
                             class="status-select status-{{ app.status | slugify_status }}"
                             style="border: none; padding: 5px 10px; border-radius: 12px; font-size: 0.85em; font-weight: 500; cursor: pointer; appearance: none; -webkit-appearance: none; text-align: center;">

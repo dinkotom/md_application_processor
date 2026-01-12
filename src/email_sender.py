@@ -97,7 +97,7 @@ def get_recipient_email(applicant_email, mode):
     return applicant_email
 
 
-def send_email_with_card(applicant_data, subject, body, card_image_bytes, email_user, email_pass, mode='test', use_html=False, copy_to=None):
+def send_email_with_card(applicant_data, subject, body, card_image_bytes, email_user, email_pass, mode='test', use_html=False, copy_to=None, smtp_host='smtp.gmail.com', smtp_port=465):
     """
     Send email with membership card attachment
     
@@ -111,6 +111,8 @@ def send_email_with_card(applicant_data, subject, body, card_image_bytes, email_
         mode: 'test' or 'production'
         use_html: If True, treat body as HTML content
         copy_to: Optional email address to copy (CC) - mainly for test mode
+        smtp_host: SMTP server hostname (default: smtp.gmail.com)
+        smtp_port: SMTP server port (default: 465)
     
     Returns:
         Dict with success status and message
@@ -134,8 +136,8 @@ def send_email_with_card(applicant_data, subject, body, card_image_bytes, email_
         
         # Create message
         msg = MIMEMultipart()
-        # Use simple string for From to avoid issues, preferably matching the account
-        msg['From'] = email_user 
+        # Use friendly sender name
+        msg['From'] = "Mladý divák <info@mladydivak.cz>"
         msg['Reply-To'] = "info@mladydivak.cz"
         msg['To'] = to_header
         msg['Subject'] = rendered_subject
@@ -163,10 +165,16 @@ def send_email_with_card(applicant_data, subject, body, card_image_bytes, email_
         image.add_header('Content-Disposition', 'attachment', filename=attachment_filename)
         msg.attach(image)
         
-        # Send email via Gmail SMTP
-        with smtplib.SMTP_SSL('smtp.gmail.com', 465) as server:
-            server.login(email_user, email_pass)
-            server.send_message(msg)
+        # Send email via SMTP
+        if int(smtp_port) == 587 or int(smtp_port) == 25:
+            with smtplib.SMTP(smtp_host, int(smtp_port)) as server:
+                server.starttls()
+                server.login(email_user, email_pass)
+                server.send_message(msg)
+        else:
+            with smtplib.SMTP_SSL(smtp_host, int(smtp_port)) as server:
+                server.login(email_user, email_pass)
+                server.send_message(msg)
             
         print(f"DEBUG: Email sent via SMTP to {to_header} from {email_user}")
         
@@ -184,7 +192,7 @@ def send_email_with_card(applicant_data, subject, body, card_image_bytes, email_
         }
 
 
-def send_welcome_email(applicant_data, card_image_bytes, email_user, email_pass, mode='test', copy_to=None):
+def send_welcome_email(applicant_data, card_image_bytes, email_user, email_pass, mode='test', copy_to=None, smtp_host='smtp.gmail.com', smtp_port=465):
     """
     Send welcome email using the official HTML template
     
@@ -195,6 +203,8 @@ def send_welcome_email(applicant_data, card_image_bytes, email_user, email_pass,
         email_pass: SMTP password
         mode: 'test' or 'production'
         copy_to: Optional email address to receive copy in test mode
+        smtp_host: SMTP server hostname (default: smtp.gmail.com)
+        smtp_port: SMTP server port (default: 465)
     
     Returns:
         Dict with success status and message
@@ -219,7 +229,9 @@ def send_welcome_email(applicant_data, card_image_bytes, email_user, email_pass,
         email_pass=email_pass,
         mode=mode,
         use_html=True,
-        copy_to=copy_to
+        copy_to=copy_to,
+        smtp_host=smtp_host,
+        smtp_port=smtp_port
     )
 
 
