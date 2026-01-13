@@ -24,7 +24,7 @@ def test_clear_database(page: Page):
     
     # 4. Confirm deletion
     # The confirmation button inside the modal
-    confirm_btn = modal.get_by_role("button", name="Ano, smazat vše")
+    confirm_btn = modal.locator("#confirmClearDbBtn")
     confirm_btn.click()
     
     # 5. Wait for navigation/reload (it redirects to advanced usually, but let's go to index to verify)

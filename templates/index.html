@@ -8,7 +8,7 @@
 
     <div style="display: flex; gap: 1rem; align-items: center; margin-top: 1rem;">
         <p class="subtitle" style="margin: 0;">Celkem: <strong>{{ total }}</strong> záznamů</p>
-        <button type="button" class="btn btn-primary" onclick="handleEmailFetch(this)">
+        <button type="button" class="btn btn-primary" onclick="handleEmailFetch(this)" id="fetchEmailsBtn">
             <span style="margin-right: 0.5rem;">⬇️</span> Stáhnout nové přihlášky
         </button>
     </div>
@@ -18,9 +18,9 @@
 
 <div class="filters-container">
     <form action="{{ url_for('applicants.index') }}" method="GET" class="search-form">
-        <input type="text" name="search" class="search-input" placeholder="Hledat jméno, email, město..."
-            value="{{ search }}">
-        <button type="submit" class="btn btn-primary">Hledat</button>
+        <input type="text" id="searchInput" name="search" class="search-input"
+            placeholder="Hledat jméno, email, město..." value="{{ search }}">
+        <button type="submit" class="btn btn-primary" id="searchBtn">Hledat</button>
     </form>
 
     <!-- Status and Alert Filter Buttons -->
@@ -29,27 +29,30 @@
         <!-- Status Filter Buttons (Left) -->
         <div class="status-filter-buttons">
             <a href="{{ url_for('applicants.index', status='Nová', search=search, age_group=filter_age_group, city=filter_city, school=filter_school, interest=filter_interest, source=filter_source, alerts=filter_alerts) }}"
+                id="filterStatusNova"
                 class="status-filter-btn status-nova {% if filter_status == 'Nová' %}active{% endif %}">
                 Nová
             </a>
             <a href="{{ url_for('applicants.index', status='Zpracovává se', search=search, age_group=filter_age_group, city=filter_city, school=filter_school, interest=filter_interest, source=filter_source, alerts=filter_alerts) }}"
+                id="filterStatusZpracovava"
                 class="status-filter-btn status-zpracovava-se {% if filter_status == 'Zpracovává se' %}active{% endif %}">
                 Zpracovává se
             </a>
             <a href="{{ url_for('applicants.index', status='Vyřízená', search=search, age_group=filter_age_group, city=filter_city, school=filter_school, interest=filter_interest, source=filter_source, alerts=filter_alerts) }}"
+                id="filterStatusVyrizena"
                 class="status-filter-btn status-vyrizena {% if filter_status == 'Vyřízená' %}active{% endif %}">
                 Vyřízená
             </a>
             {% if filter_status %}
             <a href="{{ url_for('applicants.index', search=search, age_group=filter_age_group, city=filter_city, school=filter_school, interest=filter_interest, source=filter_source, alerts=filter_alerts) }}"
-                class="status-filter-btn" style="margin-left: 0.5rem;">
+                id="filterCancelStatus" class="status-filter-btn" style="margin-left: 0.5rem;">
                 ✕ Zrušit
             </a>
             {% endif %}
         </div>
 
         {% if total_pages >= 1 %}
-        <div class="pagination"
+        <div class="pagination" id="paginationTop"
             style="margin: 0; padding: 0; border: none; background: transparent; justify-content: center;">
             <!-- First Page -->
             {% if page > 1 %}
@@ -97,13 +100,13 @@
         <!-- Alert Filter Button (Right) -->
         <div>
             <a href="{{ url_for('applicants.index', alerts='true', search=search, status=filter_status, age_group=filter_age_group, city=filter_city, school=filter_school, interest=filter_interest, source=filter_source) }}"
-                class="status-filter-btn {% if filter_alerts == 'true' %}active{% endif %}"
+                id="filterAlertsBtn" class="status-filter-btn {% if filter_alerts == 'true' %}active{% endif %}"
                 style="background: #ff9800; border-color: #ff9800;">
                 ⚠️ Pouze s upozorněními
             </a>
             {% if filter_alerts == 'true' %}
             <a href="{{ url_for('applicants.index', search=search, status=filter_status, age_group=filter_age_group, city=filter_city, school=filter_school, interest=filter_interest, source=filter_source) }}"
-                class="status-filter-btn" style="margin-left: 0.5rem;">
+                id="filterCancelAlertsBtn" class="status-filter-btn" style="margin-left: 0.5rem;">
                 ✕ Zrušit
             </a>
             {% endif %}
@@ -234,7 +237,7 @@
             </tr>
             {% else %}
             <tr>
-                <td colspan="10" class="text-center">Žádné záznamy nenalezeny</td>
+                <td colspan="10" class="text-center" id="noRecordsRow">Žádné záznamy nenalezeny</td>
             </tr>
             {% endfor %}
         </tbody>
@@ -243,7 +246,7 @@
 
 <!-- Pagination -->
 {% if total_pages > 1 %}
-<div class="pagination">
+<div class="pagination" id="paginationBottom">
     <!-- First Page -->
     {% if page > 1 %}
     <a href="{{ url_for('applicants.index', page=1, search=search, status=filter_status, age_group=filter_age_group, city=filter_city, school=filter_school, interest=filter_interest, source=filter_source, alerts=filter_alerts, character=filter_character) }}"

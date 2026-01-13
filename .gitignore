@@ -5,4 +5,5 @@ __pycache__/
 .DS_Store
 .env
 app.log
-client_secret.jsonauth.json
+client_secret.json
+auth.json

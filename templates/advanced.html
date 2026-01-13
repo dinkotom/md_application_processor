@@ -90,7 +90,7 @@
             <form id="clearDbForm" action="{{ url_for('settings.clear_database') }}" method="POST"
                 style="display: inline;">
                 <button type="button" class="btn" style="background-color: #dc3545; color: white;"
-                    onclick="submitClearDb()">Ano, smazat vše</button>
+                    id="confirmClearDbBtn" onclick="submitClearDb()">Ano, smazat vše</button>
             </form>
         </div>
     </div>
@@ -111,7 +111,8 @@
         </div>
         <div class="modal-actions">
             <button type="button" onclick="closeImportModal()" class="btn btn-secondary">Zrušit</button>
-            <button type="button" onclick="confirmImport()" class="btn btn-primary">Pokračovat</button>
+            <button type="button" onclick="confirmImport()" class="btn btn-primary"
+                id="confirmImportBtn">Pokračovat</button>
         </div>
     </div>
 </div>

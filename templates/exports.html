@@ -110,7 +110,7 @@
                 <input type="text" id="presetName" placeholder="Např. Standardní export" class="form-control"
                     style="width: 100%;">
             </div>
-            <button onclick="savePreset()" class="btn btn-secondary">Uložit aktuální výběr</button>
+            <button onclick="savePreset()" class="btn btn-secondary" id="savePresetBtn">Uložit aktuální výběr</button>
         </div>
 
         <div id="presetsList"
@@ -393,8 +393,8 @@
                     </small>
                 </div>
                 <div class="preset-actions">
-                    <button type="button" class="btn btn-small btn-primary" onclick='applyPreset(${p.fields}, ${statusJson})'>Načíst</button>
-                    <button type="button" class="btn btn-small btn-danger" onclick="deletePreset(${p.id})">×</button>
+                    <button type="button" class="btn btn-small btn-primary preset-load-btn" onclick='applyPreset(${p.fields}, ${statusJson})'>Načíst</button>
+                    <button type="button" class="btn btn-small btn-danger preset-delete-btn" onclick="deletePreset(${p.id})">×</button>
                 </div>
             `;
             container.appendChild(div);

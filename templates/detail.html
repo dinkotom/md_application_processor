@@ -31,7 +31,8 @@
                 {% endif %}
             </button>
 
-            <button type="button" onclick="openDeleteModal()" class="btn btn-danger btn-small">Smazat</button>
+            <button type="button" onclick="openDeleteModal()" class="btn btn-danger btn-small"
+                id="deleteApplicantBtn">Smazat</button>
         </div>
 
         <!-- Divider for mobile/small screens -->
@@ -798,7 +799,7 @@
                 <form action="{{ url_for('applicants.delete_applicant', id=applicant.id) }}" method="POST"
                     style="display: inline;">
                     <input type="hidden" name="next" value="{{ url_for('applicants.index', **back_args) }}">
-                    <button type="submit" class="btn btn-danger">Smazat</button>
+                    <button type="submit" class="btn btn-danger" id="confirmDeleteApplicantBtn">Smazat</button>
                 </form>
             </div>
         </div>
